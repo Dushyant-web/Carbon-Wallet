@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  name        String
+  email       String       @unique
+  createdAt   DateTime     @default(now()) @map("created_at")
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+model Household {
+  id               String            @id @default(cuid())
+  name             String
+  city             String
+  state            String
+  country          String            @default("IN")
+  size             Int
+  homeType         String            @map("home_type")
+  floorAreaM2      Float             @map("floor_area_m2")
+  monthlyBudgetInr Float?            @map("monthly_budget_inr")
+  joinCode         String            @unique @map("join_code")
+  status           String            @default("ACTIVE")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  memberships      Membership[]
+  activities       Activity[]
+  emissionEvents   EmissionEvent[]
+  recurringRules   RecurringRule[]
+  appliances       Appliance[]
+  vehicles         Vehicle[]
+  monthlySummaries MonthlySummary[]
+  recommendations  Recommendation[]
+  challenges       Challenge[]
+  goals            Goal[]
+  budgets          Budget[]
+  auditLogs        AuditLog[]
+
+  @@map("households")
+}
+
+model Membership {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  userId      String    @map("user_id")
+  role        String    @default("MEMBER") // OWNER, ADMIN, MEMBER, VIEWER
+  status      String    @default("ACTIVE") // ACTIVE, INVITED, INACTIVE
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@map("memberships")
+}
+
+model EmissionFactor {
+  id             String          @id @default(cuid())
+  category       String // Electricity, Transport, Travel, Food, Waste
+  type           String // grid_electricity, petrol, diesel, cng, lpg, etc.
+  unit           String // kWh, L, km, meal, kg
+  kgCo2ePerUnit  Float           @map("kg_co2e_per_unit")
+  region         String // IN-UP, IN-DL, IN-MH, IN-KA, IN-RJ, IN-TN, IN-WB, IN-NATIONAL
+  source         String
+  validFrom      DateTime        @default(now()) @map("valid_from")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  emissionEvents EmissionEvent[]
+
+  @@unique([category, type, region])
+  @@map("emission_factors")
+}
+
+model Activity {
+  id              String          @id @default(cuid())
+  householdId     String          @map("household_id")
+  memberId        String?         @map("member_id")
+  category        String // Electricity, Transport, Travel, Food, Waste
+  type            String // ac_cooling, petrol_car, flight_economy, etc.
+  quantity        Float
+  unit            String
+  occurredOn      DateTime        @map("occurred_on")
+  source          String          @default("MANUAL") // MANUAL, SMART_METER, RECURRING, BILL_IMPORT
+  recurringRuleId String?         @map("recurring_rule_id")
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  household       Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recurringRule   RecurringRule?  @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+  emissionEvents  EmissionEvent[]
+
+  @@index([householdId, occurredOn])
+  @@map("activities")
+}
+
+model EmissionEvent {
+  id          String         @id @default(cuid())
+  householdId String         @map("household_id")
+  activityId  String         @map("activity_id")
+  factorId    String         @map("factor_id")
+  kgCo2e      Float          @map("kg_co2e")
+  occurredOn  DateTime       @map("occurred_on")
+  household   Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  activity    Activity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  factor      EmissionFactor @relation(fields: [factorId], references: [id])
+
+  @@index([householdId, occurredOn])
+  @@map("emission_events")
+}
+
+model RecurringRule {
+  id          String     @id @default(cuid())
+  householdId String     @map("household_id")
+  template    String // JSON string representing activity template
+  schedule    String // DAILY, WEEKLY, MONTHLY
+  start       DateTime
+  end         DateTime?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+
+  @@map("recurring_rules")
+}
+
+model Appliance {
+  id             String    @id @default(cuid())
+  householdId    String    @map("household_id")
+  name           String?
+  type           String // AC, Refrigerator, WaterHeater, WashingMachine, SolarPV, etc.
+  rating         String // 5_STAR, 4_STAR, 3_STAR, INVERTER, NON_INVERTER
+  powerKw        Float     @map("power_kw")
+  avgHoursPerDay Float     @map("avg_hours_per_day")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  household      Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("appliances")
+}
+
+model Vehicle {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  name        String?
+  type        String // Car, TwoWheeler, SUV, PublicTransit
+  fuel        String // Petrol, Diesel, CNG, Electric, Hybrid
+  kmPerUnit   Float     @map("km_per_unit")
+  monthlyKm   Float     @map("monthly_km")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("vehicles")
+}
+
+model MonthlySummary {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  month       String // "YYYY-MM"
+  totalKg     Float     @map("total_kg")
+  byCategory  String    @map("by_category") // JSON string of category -> kg map
+  score       Float // 0 - 100
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, month])
+  @@index([householdId, month])
+  @@map("monthly_summaries")
+}
+
+model Recommendation {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  action      String
+  description String?
+  category    String?
+  kgSaved     Float     @map("kg_saved")
+  inrSaved    Float     @map("inr_saved")
+  difficulty  String // EASY, MEDIUM, HARD
+  status      String    @default("PENDING") // PENDING, ACCEPTED, DISMISSED, COMPLETED
+  appliedAt   DateTime? @map("applied_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("recommendations")
+}
+
+model Challenge {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  template    String
+  progress    Float     @default(0)
+  kgSaved     Float     @map("kg_saved")
+  inrSaved    Float     @map("inr_saved")
+  streak      Int       @default(0)
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("challenges")
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  targetPct   Float     @map("target_pct")
+  deadline    DateTime
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+model Budget {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  month       String // "YYYY-MM"
+  carbonCapKg Float     @map("carbon_cap_kg")
+  spendCapInr Float?    @map("spend_cap_inr")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, month])
+  @@map("budgets")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  userId      String?   @map("user_id")
+  action      String
+  entity      String
+  details     String?
+  at          DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, at])
+  @@map("audit_log")
+}
