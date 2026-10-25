@@ -3,152 +3,87 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Cpu,
-  Receipt,
-  BarChart3,
-  Users,
-  MoreHorizontal,
-  Layers,
-  CalendarDays,
-  Target,
-  FileText,
-  X,
-} from "lucide-react";
-
-const PRIMARY_TABS = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/carbon-twin", label: "Twin", icon: Cpu },
-  { href: "/activities", label: "Ledger", icon: Receipt },
-  { href: "/compare", label: "Benchmark", icon: BarChart3 },
-  { href: "/households", label: "Directory", icon: Users },
-];
-
-const MORE_LINKS = [
-  { href: "/assets", label: "Household Assets", icon: Layers, desc: "Appliances & vehicles" },
-  { href: "/plan", label: "Plan & Forecast", icon: CalendarDays, desc: "Predictive trajectory" },
-  { href: "/actions", label: "Actions & Challenges", icon: Target, desc: "Habits & check-ins" },
-  { href: "/reports", label: "Monthly Reports", icon: FileText, desc: "GHG audit certificates" },
-];
+import { MoreHorizontal, X } from "lucide-react";
+import { ALL_NAV, MOBILE_PRIMARY, NAV_GROUPS, isActive } from "@/lib/nav";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const [showMoreDrawer, setShowMoreDrawer] = useState(false);
-
-  const isMoreActive = MORE_LINKS.some((item) => pathname === item.href);
+  const [open, setOpen] = useState(false);
+  const primary = MOBILE_PRIMARY.map((href) => ALL_NAV.find((n) => n.href === href)!);
+  const moreActive = ALL_NAV.some((n) => !MOBILE_PRIMARY.includes(n.href) && isActive(pathname, n.href));
 
   return (
     <>
-      {/* Fixed Bottom Navigation Bar (Mobile / Tablet < lg) */}
       <nav
-        aria-label="Mobile Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-white/95 px-2 backdrop-blur-md shadow-tier-2 lg:hidden print:hidden"
+        aria-label="Mobile navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-canvas/95 px-2 shadow-tier-2 backdrop-blur lg:hidden print:hidden"
       >
-        {PRIMARY_TABS.map((tab) => {
+        {primary.map((tab) => {
           const Icon = tab.icon;
-          const isActive = pathname === tab.href;
-
+          const active = isActive(pathname, tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-                isActive ? "text-primary" : "text-ink-muted hover:text-ink"
-              }`}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-1 ${active ? "text-secondary" : "text-ink-muted"}`}
             >
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-                  isActive ? "bg-emerald-50 text-primary" : ""
-                }`}
-              >
-                <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-ink-muted"}`} />
-              </div>
-              <span className={`text-[10px] font-semibold tracking-tight ${isActive ? "font-bold text-primary" : ""}`}>
-                {tab.label}
+              <Icon className="h-[18px] w-[18px]" />
+              <span className={`text-[10px] tracking-tight ${active ? "font-semibold" : ""}`}>
+                {tab.label.replace("Electricity bills", "Bills").replace("Carbon ID & card", "Carbon ID")}
               </span>
             </Link>
           );
         })}
-
-        {/* More Drawer Trigger */}
         <button
-          onClick={() => setShowMoreDrawer(true)}
-          aria-label="More navigation options"
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-            isMoreActive ? "text-primary font-bold" : "text-ink-muted hover:text-ink"
-          }`}
+          onClick={() => setOpen(true)}
+          aria-label="More pages"
+          className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-1 ${moreActive ? "text-secondary" : "text-ink-muted"}`}
         >
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-              isMoreActive ? "bg-emerald-50 text-primary" : ""
-            }`}
-          >
-            <MoreHorizontal className={`h-4 w-4 ${isMoreActive ? "text-primary" : "text-ink-muted"}`} />
-          </div>
-          <span className="text-[10px] font-semibold tracking-tight">More</span>
+          <MoreHorizontal className="h-[18px] w-[18px]" />
+          <span className="text-[10px] tracking-tight">More</span>
         </button>
       </nav>
 
-      {/* More Navigation Slide-Up Drawer */}
-      {showMoreDrawer && (
+      {open && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="More Platform Domains"
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-ink/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setShowMoreDrawer(false)}
+          aria-label="All pages"
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-ink/50 lg:hidden"
+          onClick={() => setOpen(false)}
         >
-          <div
-            className="w-full rounded-t-2xl border-t border-border bg-white p-6 shadow-tier-3 animate-in slide-in-from-bottom duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
-              <span className="font-heading text-sm font-bold text-ink">
-                Additional Platform Domains
-              </span>
-              <button
-                onClick={() => setShowMoreDrawer(false)}
-                aria-label="Close menu"
-                className="rounded-full p-1 text-ink-muted hover:bg-canvas-subtle hover:text-ink"
-              >
+          <div className="max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-canvas-card p-5 shadow-tier-3" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <span className="font-heading text-lg font-medium">All pages</span>
+              <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 text-ink-muted">
                 <X className="h-5 w-5" />
               </button>
             </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {MORE_LINKS.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setShowMoreDrawer(false)}
-                    className={`flex items-center gap-3.5 rounded-xl p-3 transition-colors ${
-                      isActive
-                        ? "bg-primary text-white"
-                        : "bg-canvas-subtle hover:bg-slate-100 text-ink"
-                    }`}
-                  >
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                        isActive ? "bg-white/20 text-tertiary" : "bg-white text-primary shadow-tier-1"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold leading-tight">{item.label}</span>
-                      <span className={`text-[10px] ${isActive ? "text-white/80" : "text-ink-muted"}`}>
-                        {item.desc}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title} className="mb-4">
+                <span className="label-caps">{group.title}</span>
+                <div className="mt-1.5 grid grid-cols-1 gap-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${active ? "bg-primary text-primary-foreground" : "bg-canvas-subtle text-ink"}`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="flex flex-col">
+                          <span className="text-[13px] font-semibold leading-tight">{item.label}</span>
+                          <span className={`text-[11px] ${active ? "text-primary-foreground/75" : "text-ink-muted"}`}>{item.hint}</span>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

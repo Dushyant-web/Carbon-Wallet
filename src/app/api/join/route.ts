@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { z } from "zod";
+import { getRequestUser } from "@/server/auth/session";
 
 const JoinSchema = z.object({
   code: z.string().min(4),
@@ -22,9 +23,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid household join code" }, { status: 404 });
     }
 
-    // Resolve or create user
-    let user = null;
-    if (userId) {
+    // Resolve the joining user: the session user. Body identity is only honoured in the test suite.
+    let user = await getRequestUser(req).then((u) => (u ? db.user.findUnique({ where: { id: u.id } }) : null));
+    if (!user && process.env.DEMO_AUTH !== "1") {
+      return NextResponse.json({ error: "Unauthenticated: please log in" }, { status: 401 });
+    }
+    if (user?.platformRole === "MERCHANT") {
+      return NextResponse.json({ error: "Shop accounts can't join a household." }, { status: 403 });
+    }
+    if (user) {
+      // already resolved from session
+    } else if (userId) {
       user = await db.user.findUnique({ where: { id: userId } });
     } else if (email) {
       user = await db.user.upsert({

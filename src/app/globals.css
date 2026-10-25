@@ -3,50 +3,159 @@
 @import "tailwindcss/utilities";
 
 @layer base {
-  :root {
-    --font-inter: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-jakarta: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-
   body {
-    background-color: #F8FAFC;
-    color: #0F172A;
-    font-family: var(--font-inter);
+    background-color: #F4F1EA;
+    color: #1D1C18;
+    font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* All numbers tabular figures per DESIGN.md */
+  ::selection {
+    background: #F0D5C8;
+    color: #1D1C18;
+  }
+
+  /* Every number is tabular so columns of kg line up like a ledger */
   .tabular-nums,
   [data-tabular="true"],
   .kpi-val,
   .metric-num {
-    font-feature-settings: "tnum" 1, "cv02" 1, "cv03" 1, "cv04" 1;
     font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
   }
 }
 
-/* Accessible 2px mint focus ring per DESIGN.md */
+@layer components {
+  /* Small mono caption used for labels, units and section numbers */
+  .label-caps {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted;
+  }
+
+  /* Ruled section header: number + title + hairline */
+  .rule {
+    @apply border-t border-ink;
+  }
+}
+
 *:focus-visible {
-  outline: 2px solid #34D399;
+  outline: 2px solid #1D1C18;
   outline-offset: 2px;
 }
 
-/* Custom scrollbar for data tables */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #ECE7DC;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 4px;
+  background: #C4BBA8;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #8F897D;
 }
+
+@media print {
+  body {
+    background: #FFFFFF;
+  }
+}
+
+/* Carbon Passbook: foil-stamped type and rubber stamps */
+.cw-foil {
+  background: linear-gradient(115deg, #F4E6C4 0%, #CBA04A 32%, #F0DDAE 52%, #B7862B 74%, #EBD39B 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35)); /* text-shadow would paint over clipped text */
+}
+
+@keyframes cw-stamp-in {
+  0% { opacity: 0; transform: scale(1.8) rotate(var(--r, 0deg)); }
+  55% { opacity: 0.95; transform: scale(0.93) rotate(var(--r, 0deg)); }
+  100% { opacity: 0.94; transform: scale(1) rotate(var(--r, 0deg)); }
+}
+
+.cw-stamp-in {
+  animation: cw-stamp-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cw-stamp-in { animation: none; }
+}
+
+/* Challenge check-in confetti: each piece flies out sideways (--dx), spins (--rot) and falls */
+@keyframes cw-confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), 520px) rotate(calc(var(--rot, 0deg) + 540deg)); }
+}
+
+.cw-confetti {
+  animation: cw-confetti 1400ms cubic-bezier(0.15, 0.6, 0.4, 1) forwards;
+}
+
+/* Page content fades up on navigation */
+@keyframes cw-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.cw-page-in {
+  animation: cw-page-in 260ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cw-confetti { display: none; }
+  .cw-page-in { animation: none; }
+}
+
+/* Landing page: hide the system cursor while the custom one is active (desktop only) */
+html.cw-cursor-none,
+html.cw-cursor-none * {
+  cursor: none !important;
+}
+
+/* Lenis smooth scrolling */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Outlined display type */
+.cw-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.2px currentColor;
+}
+
+/* Landing loading screen (LoadingScreen.tsx): the Carbon Card prints out of a slot on every load while
+   the page gets ready. JS lifts the curtain once the page is interactive and the print has finished;
+   if scripts never run, it lifts by itself after 6 s. */
+@keyframes cw-load-slot { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes cw-load-print { from { transform: translateY(-104%); } to { transform: translateY(0); } }
+@keyframes cw-load-glint { from { transform: translateX(-140%) skewX(-18deg); } to { transform: translateX(340%) skewX(-18deg); } }
+@keyframes cw-load-caption { 0% { opacity: 0; transform: translateY(6px); } 18%, 82% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+@keyframes cw-load-ready { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes cw-load-fallback { to { transform: translateY(-100%); visibility: hidden; } }
+@keyframes cw-load-leave { to { transform: translateY(-100%); visibility: hidden; } }
+
+.cw-load { animation: cw-load-fallback 0.7s cubic-bezier(0.7, 0, 0.2, 1) 6s forwards; }
+.cw-load.is-leaving { animation: cw-load-leave 0.7s cubic-bezier(0.7, 0, 0.2, 1) forwards; }
+.cw-load.is-gone { display: none; }
+.cw-load-slot { animation: cw-load-slot 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.cw-load-print { animation: cw-load-print 1.4s cubic-bezier(0.35, 0, 0.25, 1) 0.35s both; }
+.cw-load-glint { animation: cw-load-glint 0.75s ease-in-out 1.6s both; }
+.cw-load-cap-1 { animation: cw-load-caption 1.4s ease 0.3s both; }
+.cw-load-cap-2 { animation: cw-load-ready 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.7s both; }
+@media (prefers-reduced-motion: reduce) { .cw-load { display: none; } }

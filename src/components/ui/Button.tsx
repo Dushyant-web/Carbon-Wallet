@@ -21,26 +21,22 @@ export function Button({
 }: ButtonProps) {
   const sizeStyles = {
     sm: "h-8 px-3 text-xs",
-    md: "h-9 px-4 text-sm font-medium",
-    lg: "h-11 px-5 text-base font-semibold",
+    md: "h-9 px-4 text-sm",
+    lg: "h-11 px-5 text-sm",
   }[size];
 
   const variantStyles = {
-    primary:
-      "bg-primary text-white hover:bg-primary-hover border border-transparent shadow-tier-1",
-    secondary:
-      "bg-white text-ink border border-border hover:bg-canvas-subtle hover:border-border-hover shadow-tier-1",
-    ghost:
-      "bg-transparent text-ink-muted hover:bg-canvas-subtle hover:text-ink",
-    destructive:
-      "bg-critical text-white hover:bg-red-700 border border-transparent",
-    mint:
-      "bg-secondary-fixed text-primary font-bold hover:bg-white border border-secondary shadow-tier-1",
+    primary: "bg-primary text-primary-foreground border border-primary hover:bg-primary-hover",
+    secondary: "bg-canvas-card text-ink border border-border hover:border-ink",
+    ghost: "bg-transparent text-ink-muted border border-transparent hover:text-ink hover:bg-canvas-subtle",
+    destructive: "bg-critical text-white border border-critical hover:bg-critical-text",
+    // Kept for API compatibility: the accent action on dark surfaces
+    mint: "bg-secondary text-white border border-secondary hover:bg-secondary-hover",
   }[variant];
 
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${sizeStyles} ${variantStyles} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors duration-100 disabled:opacity-45 disabled:cursor-not-allowed ${sizeStyles} ${variantStyles} ${className}`}
       disabled={disabled}
       {...props}
     >

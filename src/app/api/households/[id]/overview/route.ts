@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { COUNTED_ACTIVITY } from "@/server/counted";
 import { db } from "@/server/db";
+import { hasPermission } from "@/server/auth/permissions";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
+import { monthCoverage, resolveReportingPeriod, shiftMonth } from "@/server/period";
+import { benchmarkService, BenchmarkUnavailable } from "@/server/services/benchmark.service";
 
 export async function GET(
   req: NextRequest,
@@ -8,10 +12,10 @@ export async function GET(
 ) {
   try {
     const { id: householdId } = await params;
-    await requireMembership(req, householdId, "data:read");
+    const auth = await requireMembership(req, householdId, "data:read");
 
-    const searchParams = req.nextUrl.searchParams;
-    const targetMonth = searchParams.get("month") || "2026-03";
+    const period = await resolveReportingPeriod(householdId, req.nextUrl.searchParams.get("month"));
+    const targetMonth = period.month;
 
     const household = await db.household.findUnique({
       where: { id: householdId },
@@ -26,9 +30,9 @@ export async function GET(
           orderBy: { kgSaved: "desc" },
         },
         monthlySummaries: {
-          where: { month: { lte: targetMonth } },
+          where: { month: { lte: period.newerPartial?.month ?? targetMonth } },
           orderBy: { month: "desc" },
-          take: 6,
+          take: 8,
         },
       },
     });
@@ -37,22 +41,20 @@ export async function GET(
       return NextResponse.json({ error: "Household not found" }, { status: 404 });
     }
 
-    // Current target month and prior month
-    const currentSummary = household.monthlySummaries.find((s) => s.month === targetMonth) ||
-      household.monthlySummaries[0];
-    const priorMonthKey = (() => {
-      const [y, m] = targetMonth.split("-").map(Number);
-      const prevD = new Date(Date.UTC(y, m - 2, 1));
-      return `${prevD.getUTCFullYear()}-${String(prevD.getUTCMonth() + 1).padStart(2, "0")}`;
-    })();
-    const priorSummary = household.monthlySummaries.find((s) => s.month === priorMonthKey) ||
-      household.monthlySummaries[1];
+    // The reporting month and the calendar month before it: never a different month standing in
+    const currentSummary = household.monthlySummaries.find((s) => s.month === targetMonth) ?? null;
+    const priorMonthKey = shiftMonth(targetMonth, -1);
+    const priorSummary = household.monthlySummaries.find((s) => s.month === priorMonthKey) ?? null;
 
+    const coverage = await monthCoverage(householdId);
     const currentEmissions = currentSummary?.totalKg ?? 0;
-    const priorEmissions = priorSummary?.totalKg ?? 0;
-    const trendPct = priorEmissions > 0
+    const priorPartial = coverage.get(priorMonthKey)?.partial ?? false;
+    // Only compare two months that are both complete; a partly billed month would make any % meaningless
+    const comparable = !!currentSummary && !!priorSummary && !priorPartial && !period.isPartial;
+    const priorEmissions = comparable ? priorSummary!.totalKg : null;
+    const trendPct = comparable && priorEmissions
       ? Number((((currentEmissions - priorEmissions) / priorEmissions) * 100).toFixed(1))
-      : 0;
+      : null;
 
     // Category breakdown
     let breakdown: Record<string, number> = {};
@@ -77,40 +79,101 @@ export async function GET(
       ? Number(((topKg / currentEmissions) * 100).toFixed(1))
       : 0;
 
-    // 6-Month trajectory (chronological)
-    const historyMonths = [...household.monthlySummaries].reverse().map((s) => {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const [, mStr] = s.month.split("-");
-      const mIdx = parseInt(mStr, 10) - 1;
+    // Six calendar months ending at the newest month with data; gaps stay visible as null
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const lastMonth = period.newerPartial?.month ?? targetMonth;
+    const byMonth = new Map(household.monthlySummaries.map((s) => [s.month, s.totalKg]));
+    const historyMonths = Array.from({ length: 6 }, (_, i) => shiftMonth(lastMonth, i - 5)).map((month) => {
+      const cov = coverage.get(month);
+      const kg = byMonth.get(month);
       return {
-        month: s.month,
-        label: monthNames[mIdx] || s.month,
-        totalKg: s.totalKg,
+        month,
+        label: monthNames[parseInt(month.slice(5), 10) - 1],
+        totalKg: kg && kg > 0 ? kg : null,
+        partial: cov?.partial ?? false,
+        billedDays: cov?.billedDays ?? null,
+        daysInMonth: cov?.daysInMonth ?? null,
+        isReporting: month === targetMonth,
       };
     });
 
-    // Score details
-    const score = Math.round(currentSummary?.score ?? 70);
-    let scoreBand = "Average";
-    if (score >= 90) scoreBand = "Excellent (Net Zero Leader)";
-    else if (score >= 75) scoreBand = "Good Standing";
-    else if (score < 40) scoreBand = "Critical";
-    else if (score < 60) scoreBand = "Poor";
+    // Score: only when the month has data
+    const score = currentSummary ? Math.round(currentSummary.score) : null;
+    let scoreBand: string | null = null;
+    if (score !== null) {
+      scoreBand = "Average";
+      if (score >= 90) scoreBand = "Excellent";
+      else if (score >= 75) scoreBand = "Good";
+      else if (score < 40) scoreBand = "Critical";
+      else if (score < 60) scoreBand = "Poor";
+    }
 
-    // Next best action
-    const nba = household.recommendations[0] || {
-      action: "Maintain Smart Baseline Monitoring",
-      description: "Continue automated metering to maintain optimal energy efficiency.",
-      kgSaved: 15.0,
-      inrSaved: 500,
-      difficulty: "EASY",
+    // Next best action: the top pending recommendation, or nothing
+    const nba = household.recommendations[0] ?? null;
+
+    // Peers: every home with recorded data for the same month
+    let peer: { percentile: number; cohortCount: number; medianKg: number; differenceFromMedianPct: number } | null = null;
+    if (currentSummary) {
+      try {
+        const b = await benchmarkService.getCohortBenchmark(householdId, targetMonth);
+        if (b.cohortCount >= 3) {
+          peer = {
+            percentile: b.percentile,
+            cohortCount: b.cohortCount,
+            medianKg: b.cohortMedianTotal,
+            differenceFromMedianPct: b.differenceFromMedianPct,
+          };
+        }
+      } catch (err) {
+        if (!(err instanceof BenchmarkUnavailable)) throw err;
+      }
+    }
+
+    // Where this month's number comes from
+    const events = await db.emissionEvent.findMany({
+      where: {
+        householdId,
+        occurredOn: {
+          gte: new Date(`${targetMonth}-01T00:00:00.000Z`),
+          lt: new Date(`${shiftMonth(targetMonth, 1)}-01T00:00:00.000Z`),
+        },
+        activity: COUNTED_ACTIVITY,
+      },
+      select: { kgCo2e: true, factor: { select: { source: true } }, activity: { select: { source: true, billId: true } } },
+    });
+    const billEvents = events.filter((e) => e.activity.billId);
+    const billKg = billEvents.reduce((a, e) => a + e.kgCo2e, 0);
+    const provenance = {
+      nBills: new Set(billEvents.map((e) => e.activity.billId)).size,
+      nLogs: events.length - billEvents.length,
+      billKg: Number(billKg.toFixed(1)),
+      loggedKg: Number((events.reduce((a, e) => a + e.kgCo2e, 0) - billKg).toFixed(1)),
+      billSharePct: currentEmissions > 0 ? Math.round((billKg / currentEmissions) * 100) : 0,
+      factorSources: [...new Set(events.map((e) => e.factor.source.split(" - ")[0]))].slice(0, 4),
     };
 
     // Solar PV presence
     const solarAppliance = household.appliances.find((a) => a.type === "SolarPV");
     const solarKwh = solarAppliance ? Math.round(solarAppliance.powerKw * solarAppliance.avgHoursPerDay * 30) : 0;
 
+    // First-run checklist, ticked from real data
+    const [billCount, committedCount, challengeCount] = await Promise.all([
+      db.bill.count({ where: { householdId } }),
+      db.recommendation.count({ where: { householdId, status: { in: ["ACCEPTED", "COMPLETED"] } } }),
+      db.challenge.count({ where: { householdId } }),
+    ]);
+    const setup = {
+      bills: billCount,
+      assets: household.appliances.length + household.vehicles.length,
+      committed: committedCount,
+      challenges: challengeCount,
+    };
+
     return NextResponse.json({
+      access: { role: auth.role, viewOnly: !hasPermission(auth.role, "activity:create"), canAddBills: hasPermission(auth.role, "bill:create") },
+      period,
+      provenance,
+      setup,
       household: {
         id: household.id,
         name: household.name,
@@ -119,6 +182,7 @@ export async function GET(
         country: household.country,
         size: household.size,
         floorAreaM2: household.floorAreaM2,
+        monthlyBudgetInr: household.monthlyBudgetInr,
         joinCode: household.joinCode,
         status: household.status,
       },
@@ -133,9 +197,9 @@ export async function GET(
           amountKg: topKg,
           sharePct: topSharePct,
         },
-        peerPercentile: Math.min(98, Math.max(15, Math.round(100 - (currentEmissions / 450) * 100))),
-        actionableSavingsKg: nba.kgSaved,
-        actionableSavingsInr: nba.inrSaved,
+        peer,
+        actionableSavingsKg: nba?.kgSaved ?? null,
+        actionableSavingsInr: nba?.inrSaved ?? null,
       },
       trendHistory: historyMonths,
       categoryBreakdown: breakdown,
@@ -152,6 +216,7 @@ export async function GET(
         type: a.type,
         rating: a.rating,
         powerKw: a.powerKw,
+        avgHoursPerDay: a.avgHoursPerDay,
       })),
       vehicles: household.vehicles.map((v) => ({
         id: v.id,
@@ -159,6 +224,8 @@ export async function GET(
         type: v.type,
         fuel: v.fuel,
         monthlyKm: v.monthlyKm,
+        kmPerUnit: v.kmPerUnit,
+        year: v.year,
       })),
       solar: {
         hasSolar: !!solarAppliance,

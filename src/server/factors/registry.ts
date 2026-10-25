@@ -12,86 +12,88 @@ export interface FactorDefinition {
 }
 
 export const OFFICIAL_EMISSION_FACTORS: FactorDefinition[] = [
-  // --- ELECTRICITY: Regional Grid Emission Factors (CEA v19, 2024) ---
+  // --- ELECTRICITY: CEA CO2 Baseline Database v22.0 (Aug 2026), FY 2025-26 ---
+  // India runs one synchronised national grid; CEA publishes a single all-India weighted
+  // average (0.675 tCO2/MWh). Regions are kept as lookup keys and all resolve to it.
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.82,
+    kgCo2ePerUnit: 0.675,
     region: "IN-UP",
-    source: "CEA CO2 Baseline Database v19 (2024) - Northern Regional Grid (Uttar Pradesh)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.82,
+    kgCo2ePerUnit: 0.675,
     region: "IN-DL",
-    source: "CEA CO2 Baseline Database v19 (2024) - Northern Regional Grid (Delhi NCR)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.82,
+    kgCo2ePerUnit: 0.675,
     region: "IN-HR",
-    source: "CEA CO2 Baseline Database v19 (2024) - Northern Regional Grid (Haryana)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.79,
+    kgCo2ePerUnit: 0.675,
     region: "IN-MH",
-    source: "CEA CO2 Baseline Database v19 (2024) - Western Regional Grid (Maharashtra)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.67,
+    kgCo2ePerUnit: 0.675,
     region: "IN-KA",
-    source: "CEA CO2 Baseline Database v19 (2024) - Southern Grid (Karnataka Renewable Heavy)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.71,
+    kgCo2ePerUnit: 0.675,
     region: "IN-TN",
-    source: "CEA CO2 Baseline Database v19 (2024) - Southern Grid (Tamil Nadu Wind Mix)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.74,
+    kgCo2ePerUnit: 0.675,
     region: "IN-RJ",
-    source: "CEA CO2 Baseline Database v19 (2024) - Northern Grid (Rajasthan Solar Mix)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.88,
+    kgCo2ePerUnit: 0.675,
     region: "IN-WB",
-    source: "CEA CO2 Baseline Database v19 (2024) - Eastern Grid (West Bengal Thermal Base)",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
   {
     category: "Electricity",
     type: "grid_electricity",
     unit: "kWh",
-    kgCo2ePerUnit: 0.727,
+    kgCo2ePerUnit: 0.675,
     region: "IN-NATIONAL",
-    source: "CEA CO2 Baseline Database v19 (2024) - All India Weighted Average Grid",
+    source: "CEA CO2 Baseline Database v22.0 (Aug 2026) - FY 2025-26 all-India weighted average",
     validFrom: new Date("2024-01-01"),
   },
 
@@ -245,6 +247,47 @@ export const OFFICIAL_EMISSION_FACTORS: FactorDefinition[] = [
     validFrom: new Date("2024-01-01"),
   },
 
+  // --- PUBLIC TRANSPORT ---
+  {
+    category: "Travel",
+    type: "city_bus",
+    unit: "km",
+    kgCo2ePerUnit: 0.0152, // per passenger-km
+    region: "IN-NATIONAL",
+    source: "India GHG Program 2015 - Urban bus, per passenger-km",
+    validFrom: new Date("2024-01-01"),
+  },
+
+  // --- REFRIGERANT (AC gas top-ups: every kg added replaces a kg that leaked out) ---
+  // Same GWP100 values as the engine (backend/app/engine/factors.py, GWP_AR6)
+  {
+    category: "Refrigerant",
+    type: "refrigerant_r32",
+    unit: "kg",
+    kgCo2ePerUnit: 771,
+    region: "IN-NATIONAL",
+    source: "IPCC AR6 GWP100 - HFC-32 (R-32)",
+    validFrom: new Date("2024-01-01"),
+  },
+  {
+    category: "Refrigerant",
+    type: "refrigerant_r410a",
+    unit: "kg",
+    kgCo2ePerUnit: 2256,
+    region: "IN-NATIONAL",
+    source: "IPCC AR6 GWP100 - R-410A blend",
+    validFrom: new Date("2024-01-01"),
+  },
+  {
+    category: "Refrigerant",
+    type: "refrigerant_r22",
+    unit: "kg",
+    kgCo2ePerUnit: 1960,
+    region: "IN-NATIONAL",
+    source: "IPCC AR6 GWP100 - HCFC-22 (R-22)",
+    validFrom: new Date("2024-01-01"),
+  },
+
   // --- WASTE ---
   {
     category: "Waste",
@@ -292,6 +335,13 @@ export async function seedEmissionFactors() {
 /**
  * Helper to map household state / code to factor region code.
  */
+/** kg CO₂ per kWh of grid electricity for a state (the national figure when the state has none of its own). */
+export function gridFactor(state?: string | null): number {
+  const region = stateToRegion(state);
+  const grid = OFFICIAL_EMISSION_FACTORS.filter((f) => f.type === "grid_electricity");
+  return (grid.find((f) => f.region === region) ?? grid.find((f) => f.region === "IN-NATIONAL") ?? grid[0]).kgCo2ePerUnit;
+}
+
 export function stateToRegion(state?: string | null): string {
   if (!state) return "IN-NATIONAL";
   const s = state.toUpperCase().trim();

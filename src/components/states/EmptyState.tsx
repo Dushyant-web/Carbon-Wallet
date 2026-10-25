@@ -27,10 +27,10 @@ export function EmptyState({
       aria-live="polite"
       className={`flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-border bg-canvas-subtle/50 ${className}`}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-primary shadow-tier-1 mb-4 border border-border">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-canvas-card text-primary shadow-tier-1 mb-4 border border-border">
         {icon || <Layers className="h-6 w-6 text-slate-400" />}
       </div>
-      <h3 className="font-heading text-base font-bold text-ink mb-1">
+      <h3 className="font-heading text-base font-medium text-ink mb-1">
         {title}
       </h3>
       <p className="max-w-sm text-xs text-ink-muted leading-relaxed mb-6">

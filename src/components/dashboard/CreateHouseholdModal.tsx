@@ -78,20 +78,20 @@ export function CreateHouseholdModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
     >
-      <div className="w-full max-w-lg rounded-xl border border-border bg-white p-6 shadow-tier-3">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-canvas-card p-6 shadow-tier-3">
         <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-primary">
               <Home className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="create-modal-title" className="font-heading text-base font-bold text-ink">
+              <h3 id="create-modal-title" className="font-heading text-base font-medium text-ink">
                 Onboard New Household Tenant
               </h3>
               <p className="text-xs text-ink-muted">
-                Initializes telemetry ledger and baseline monthly summaries
+                Starts your household&apos;s record
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function CreateHouseholdModal() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+            <label className="text-[11px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
               Household Name
             </label>
             <input
@@ -121,14 +121,14 @@ export function CreateHouseholdModal() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Mukherjee Residence"
-              className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+              className="mt-1 w-full rounded-lg border border-border bg-canvas-card px-3 py-2 text-sm text-ink outline-none focus:border-primary"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <label className="text-[11px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
                 City
               </label>
               <input
@@ -136,19 +136,19 @@ export function CreateHouseholdModal() {
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="e.g. Kolkata"
-                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                className="mt-1 w-full rounded-lg border border-border bg-canvas-card px-3 py-2 text-sm text-ink outline-none focus:border-primary"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <label className="text-[11px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
                 State / Territory
               </label>
               <select
                 value={state}
                 onChange={(e) => setState(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                className="mt-1 w-full rounded-lg border border-border bg-canvas-card px-3 py-2 text-sm text-ink outline-none focus:border-primary"
               >
                 <option value="UP">Uttar Pradesh (IN-UP)</option>
                 <option value="DL">Delhi NCR (IN-DL)</option>
@@ -164,7 +164,7 @@ export function CreateHouseholdModal() {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <label className="text-[11px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
                 Family Size
               </label>
               <input
@@ -173,18 +173,18 @@ export function CreateHouseholdModal() {
                 max="15"
                 value={size}
                 onChange={(e) => setSize(parseInt(e.target.value, 10))}
-                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                className="mt-1 w-full rounded-lg border border-border bg-canvas-card px-3 py-2 text-sm text-ink outline-none focus:border-primary"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <label className="text-[11px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
                 Dwelling Type
               </label>
               <select
                 value={homeType}
                 onChange={(e) => setHomeType(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                className="mt-1 w-full rounded-lg border border-border bg-canvas-card px-3 py-2 text-sm text-ink outline-none focus:border-primary"
               >
                 <option value="Apartment">Apartment</option>
                 <option value="Independent House">Independent House</option>
@@ -193,7 +193,7 @@ export function CreateHouseholdModal() {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <label className="text-[11px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
                 Floor Area (m²)
               </label>
               <input
@@ -202,7 +202,7 @@ export function CreateHouseholdModal() {
                 max="1000"
                 value={floorAreaM2}
                 onChange={(e) => setFloorAreaM2(parseInt(e.target.value, 10))}
-                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                className="mt-1 w-full rounded-lg border border-border bg-canvas-card px-3 py-2 text-sm text-ink outline-none focus:border-primary"
               />
             </div>
           </div>

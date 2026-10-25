@@ -59,6 +59,11 @@ export async function POST(
       memberId: body.memberId || auth.userId,
     });
 
+    // ?preview=1: what this would add, with the real factor, without recording anything
+    if (req.nextUrl.searchParams.get("preview") === "1") {
+      return NextResponse.json(await emissionService.preview(householdId, validated));
+    }
+
     const result = await emissionService.calculateAndRecord(householdId, validated);
 
     return NextResponse.json(result, { status: 201 });

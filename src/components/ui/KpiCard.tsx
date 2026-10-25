@@ -8,7 +8,7 @@ interface KpiCardProps {
   icon?: React.ReactNode;
   deltaText?: string;
   deltaVariant?: ChipVariant;
-  metaText?: string;
+  metaText?: React.ReactNode;
   className?: string;
 }
 
@@ -24,35 +24,23 @@ export function KpiCard({
 }: KpiCardProps) {
   return (
     <div
-      className={`rounded-lg border border-border bg-canvas-card p-5 shadow-tier-1 flex flex-col justify-between transition-all hover:border-border-hover ${className}`}
+      className={`flex flex-col justify-between border-t border-ink bg-transparent pt-3 pb-1 ${className}`}
     >
-      <div className="flex items-center justify-between text-ink-muted">
-        <span className="text-[11px] font-bold uppercase tracking-wider">
-          {label}
-        </span>
-        {icon && <span className="text-secondary">{icon}</span>}
+      <div className="flex items-center justify-between">
+        <span className="label-caps">{label}</span>
+        {icon && <span className="text-ink-light">{icon}</span>}
       </div>
 
-      <div className="my-3 flex items-baseline gap-1.5">
-        <span className="text-3xl font-bold tracking-tight text-ink tabular-nums font-heading">
+      <div className="mt-3 mb-3 flex items-baseline gap-1.5">
+        <span className="font-heading text-[2.6rem] leading-none font-medium tracking-tight text-ink tabular-nums">
           {value}
         </span>
-        {unit && (
-          <span className="text-sm font-semibold text-ink-muted">
-            {unit}
-          </span>
-        )}
+        {unit && <span className="font-mono text-xs text-ink-muted">{unit}</span>}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        {deltaText && (
-          <MetricChip label={deltaText} variant={deltaVariant} />
-        )}
-        {metaText && (
-          <span className="text-[12px] text-ink-muted">
-            {metaText}
-          </span>
-        )}
+        {deltaText && <MetricChip label={deltaText} variant={deltaVariant} />}
+        {metaText && <span className="text-xs text-ink-muted">{metaText}</span>}
       </div>
     </div>
   );

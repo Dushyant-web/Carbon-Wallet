@@ -3,27 +3,31 @@
 import React from "react";
 import { useAppStore } from "@/store";
 import { Role } from "@/types";
-import { Shield } from "lucide-react";
+import { ROLE_LABELS } from "@/server/auth/permissions";
 
+/**
+ * Demo-only permission preview: lets an owner see the app as a lower role would.
+ * The server only honours downgrades, so this can never grant extra access.
+ * Hidden unless NEXT_PUBLIC_SHOW_DEMO=1.
+ */
 export function RoleSwitcher() {
   const { demoRole, setDemoRole } = useAppStore();
 
-  const roles: { role: Role; label: string; desc: string }[] = [
-    { role: "OWNER", label: "Owner", desc: "Full administrative access" },
-    { role: "ADMIN", label: "Admin", desc: "Can manage assets & members" },
-    { role: "MEMBER", label: "Member", desc: "Can log activities & apply actions" },
-    { role: "VIEWER", label: "Viewer", desc: "Read-only access (403 on edits)" },
-  ];
+  if (process.env.NEXT_PUBLIC_SHOW_DEMO !== "1") return null;
+
+  const roles = (["OWNER", "MEMBER", "VIEWER"] as const).map((role: Role) => ({ role, label: ROLE_LABELS[role] }));
 
   return (
-    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-2 py-1 text-xs shadow-tier-1">
-      <Shield className="h-3.5 w-3.5 text-secondary" />
-      <span className="text-[11px] font-bold text-ink-muted uppercase">Role:</span>
+    <label
+      title="Preview what other household roles can see and do. It can only reduce permissions."
+      className="flex h-8 items-center gap-2 rounded-md border border-dashed border-border-hover bg-canvas-card px-2.5 text-xs"
+    >
+      <span className="label-caps">Preview as</span>
       <select
         value={demoRole}
         onChange={(e) => setDemoRole(e.target.value as Role)}
-        aria-label="Demo simulation role switcher"
-        className="bg-transparent font-bold text-primary outline-none cursor-pointer text-xs"
+        aria-label="Preview the app as another household role"
+        className="cursor-pointer bg-transparent text-xs font-semibold text-ink outline-none"
       >
         {roles.map((r) => (
           <option key={r.role} value={r.role}>
@@ -31,6 +35,6 @@ export function RoleSwitcher() {
           </option>
         ))}
       </select>
-    </div>
+    </label>
   );
 }

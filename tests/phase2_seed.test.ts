@@ -7,7 +7,7 @@ import { seedDatabase } from "../prisma/seed";
 describe("Phase 2: Seed Generator & Calibration Engine", () => {
   beforeAll(async () => {
     await seedDatabase();
-  });
+  }, 60_000); // a full reseed takes ~20 s on slower disks; timing out half-way leaves other suites a broken household
 
   afterAll(async () => {
     await db.$disconnect();

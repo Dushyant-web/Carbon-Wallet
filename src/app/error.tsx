@@ -12,7 +12,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Unhandled client error in CarbonOS:", error);
+    console.error("Unhandled client error in Carbon Wallet:", error);
   }, [error]);
 
   return (
@@ -20,8 +20,8 @@ export default function GlobalError({
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 shadow-tier-2 mb-4">
         <AlertTriangle className="h-7 w-7" />
       </div>
-      <h1 className="font-heading text-2xl font-bold text-ink mb-2">
-        Telemetry Stream Interrupted
+      <h1 className="font-heading text-2xl font-medium text-ink mb-2">
+        Something went wrong
       </h1>
       <p className="max-w-md text-xs text-ink-muted leading-relaxed mb-6">
         An unexpected execution exception halted the current UI rendering pass. The underlying

@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
-import { z } from "zod";
+import { refreshRecommendations } from "@/server/services/recommendation.service";
+import { ApplianceSchema } from "@/lib/assets";
 
-const ApplianceSchema = z.object({
-  name: z.string().min(1),
-  type: z.string().min(1),
-  rating: z.string().default("3_STAR"),
-  powerKw: z.number().positive(),
-  avgHoursPerDay: z.number().positive().default(4.0),
-});
 
 export async function GET(
   req: NextRequest,
@@ -48,6 +42,7 @@ export async function POST(
       },
     });
 
+    await refreshRecommendations(householdId);
     return NextResponse.json({ appliance }, { status: 201 });
   } catch (err) {
     if (err && typeof err === "object" && "name" in err && err.name === "ZodError") {

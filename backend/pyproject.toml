@@ -1,0 +1,38 @@
+[project]
+name = "carbon-wallet-api"
+version = "0.1.0"
+description = "Carbon Wallet calculation engine and statement-anchoring API (FastAPI)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.32",
+  "pydantic>=2.9",
+  "sqlalchemy>=2.0",
+  "pycryptodome>=3.21",
+  "pdfplumber>=0.11",
+  "pypdfium2>=4.30",
+  "pytesseract>=0.3.13",
+  "opencv-python-headless>=4.10",
+  "pillow>=11",
+  "pillow-heif>=0.18",
+  "numpy>=2",
+  "rapidfuzz>=3.9",
+  "anthropic>=0.60",
+  "shap>=0.53.0",
+  "web3>=7",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.28",
+    "reportlab>=4.2",
+    "eth-tester[py-evm]>=0.14.0b1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

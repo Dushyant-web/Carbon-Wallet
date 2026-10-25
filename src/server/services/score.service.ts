@@ -26,7 +26,11 @@ export class ScoreService {
    * 10% renewable share
    * 10% completed actions
    */
-  async calculateScore(householdId: string, month: string): Promise<ScoreBreakdown> {
+  /**
+   * `totalKg` is the month's fresh total when called while the summary is being rebuilt; without it the
+   * stored summary is used. There is no made-up default: a month with no emissions data has no score.
+   */
+  async calculateScore(householdId: string, month: string, totalKg?: number): Promise<ScoreBreakdown> {
     const household = await db.household.findUnique({
       where: { id: householdId },
       include: {
@@ -51,7 +55,10 @@ export class ScoreService {
       },
     });
 
-    const currentTotalKg = currentSummary?.totalKg ?? 250;
+    const currentTotalKg = totalKg ?? currentSummary?.totalKg;
+    if (currentTotalKg === undefined) {
+      throw new Error(`No emissions recorded for ${month}, so there is no score yet`);
+    }
     const householdSize = Math.max(1, household.size);
     const perPersonKg = currentTotalKg / householdSize;
 
@@ -64,19 +71,16 @@ export class ScoreService {
 
     // Component 2: 20% Trend (last 3 months)
     // Check if emissions are falling or rising
-    const pastSummaries = await db.monthlySummary.findMany({
-      where: {
-        householdId,
-        month: { lte: month },
-      },
+    // Compare with the most recent earlier month that has data (never with a stale copy of this month)
+    const previous = await db.monthlySummary.findFirst({
+      where: { householdId, month: { lt: month }, totalKg: { gt: 0 } },
       orderBy: { month: "desc" },
-      take: 4,
     });
 
-    let c2 = 70; // baseline neutral
-    if (pastSummaries.length >= 2) {
-      const latest = pastSummaries[0].totalKg;
-      const prior = pastSummaries[1].totalKg;
+    let c2 = 70; // neutral when there is no earlier month to compare with
+    if (previous) {
+      const latest = currentTotalKg;
+      const prior = previous.totalKg;
       if (prior > 0) {
         const changePct = ((latest - prior) / prior) * 100;
         // Falling emissions (negative changePct) increases score

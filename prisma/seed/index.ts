@@ -4,9 +4,24 @@ import { HOUSEHOLD_PROFILES } from "./households.config";
 import { generateRawActivities } from "./generator";
 import { calibrateHouseholdActivities } from "./calibrate";
 import { scoreService } from "@/server/services/score.service";
+import { hashPassword } from "@/server/auth/password";
+import { ensureHouseholdIdentity } from "@/server/services/identity.service";
+import { refreshRecommendations } from "@/server/services/recommendation.service";
+
+// Demo logins (seed data only): every seeded member shares DEMO_PASSWORD; one platform admin.
+const DEMO_PASSWORD = "CarbonDemo#2026";
+const DEMO_LOGIN_HOUSEHOLD = "Sharma Residence";
+const ADMIN = { name: "Platform Admin", email: "admin@carbonwallet.in", password: "AdminDemo#2026" };
 
 export async function seedDatabase() {
   console.log("🌱 Starting CarbonOS calibrated database seeding...");
+
+  const demoHash = await hashPassword(DEMO_PASSWORD);
+  await db.user.upsert({
+    where: { email: ADMIN.email },
+    update: { platformRole: "ADMIN", status: "ACTIVE", passwordHash: await hashPassword(ADMIN.password) },
+    create: { name: ADMIN.name, email: ADMIN.email, platformRole: "ADMIN", passwordHash: await hashPassword(ADMIN.password) },
+  });
 
   // 1. Seed Factor Registry
   console.log("⚡ Seeding versioned Indian emission factor registry...");
@@ -76,10 +91,11 @@ export async function seedDatabase() {
 
     // Upsert Members
     for (const mem of profile.members) {
+      const loginFields = { passwordHash: demoHash, status: "ACTIVE" }; // every seeded demo member can log in
       const user = await db.user.upsert({
         where: { email: mem.email },
-        update: { name: mem.name },
-        create: { name: mem.name, email: mem.email },
+        update: { name: mem.name, ...loginFields },
+        create: { name: mem.name, email: mem.email, ...loginFields },
       });
 
       await db.membership.upsert({
@@ -168,7 +184,7 @@ export async function seedDatabase() {
 
         const factorId = getFactorId(act.category, factorType, region);
         const factorObj = allFactors.find((f) => f.id === factorId);
-        const factorVal = factorObj?.kgCo2ePerUnit || 0.82;
+        const factorVal = factorObj?.kgCo2ePerUnit || 0.675;
 
         let effectiveQty = act.quantity;
         if (act.category === "Electricity" && ["hours", "hour", "h"].includes(act.unit.toLowerCase())) {
@@ -213,6 +229,10 @@ export async function seedDatabase() {
       });
     }
 
+    // Pending suggestions are computed from this home's own AC, car and tariff (seeded accepted/completed
+    // actions stay as history)
+    await refreshRecommendations(household.id);
+
     // Compute live CarbonOS Index for each month
     for (const monthResult of calibratedMonths) {
       const scoreObj = await scoreService.calculateScore(household.id, monthResult.month);
@@ -254,7 +274,16 @@ export async function seedDatabase() {
   console.log("\n================ CALIBRATION RESULTS SUMMARY ================");
   console.table(resultsSummary);
   console.log("=============================================================\n");
+  // Permanent Carbon IDs + public QR tokens, assigned in config order so IDs are stable.
+  for (const profile of HOUSEHOLD_PROFILES) {
+    const hh = await db.household.findFirst({ where: { name: profile.name }, select: { id: true } });
+    if (hh) await ensureHouseholdIdentity(hh.id);
+  }
+  // Demo-only: a fixed, documented token so the landing page QR always opens a real record.
+  await db.household.updateMany({ where: { name: DEMO_LOGIN_HOUSEHOLD }, data: { publicToken: "sharma-demo" } });
+
   console.log("✅ Seed completed successfully with 10 calibrated households!");
+  console.log(`🔑 Demo user: arjun.sharma@example.com / ${DEMO_PASSWORD}  ·  Admin: ${ADMIN.email} / ${ADMIN.password}`);
 }
 
 if (process.argv[1]?.includes("seed")) {

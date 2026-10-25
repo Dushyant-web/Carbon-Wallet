@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
+import { currentMonthIST, resolveReportingPeriod } from "@/server/period";
 import { z } from "zod";
+import { getRequestUser } from "@/server/auth/session";
+import { ensureHouseholdIdentity } from "@/server/services/identity.service";
 
 const CreateHouseholdSchema = z.object({
   name: z.string().min(2),
@@ -25,6 +28,14 @@ export async function GET(req: NextRequest) {
     const limit = Math.max(1, parseInt(searchParams.get("limit") || "100", 10));
 
     const where: Record<string, unknown> = { status: "ACTIVE" };
+    // Tenancy: users only see households they belong to; platform admins see all.
+    const user = await getRequestUser(req);
+    if (!user && process.env.DEMO_AUTH !== "1") {
+      return NextResponse.json({ error: "Unauthenticated: please log in" }, { status: 401 });
+    }
+    if (user && user.platformRole !== "ADMIN") {
+      where.memberships = { some: { userId: user.id, status: "ACTIVE" } };
+    }
     if (state && state !== "all") {
       const s = state.toUpperCase().trim();
       let stateCodes = [state];
@@ -55,13 +66,19 @@ export async function GET(req: NextRequest) {
           },
         },
         monthlySummaries: {
-          where: { month: "2026-03" },
+          where: { month: { lt: currentMonthIST() }, totalKg: { gt: 0 } },
+          orderBy: { month: "desc" },
+          take: 24,
         },
       },
     });
 
+    // Same reporting month as the overview: latest month with data that bills cover fully
+    const reporting = new Map(
+      await Promise.all(households.map(async (h) => [h.id, (await resolveReportingPeriod(h.id)).month] as const)),
+    );
     let formatted = households.map((h) => {
-      const currentMonthSummary = h.monthlySummaries[0];
+      const currentMonthSummary = h.monthlySummaries.find((m) => m.month === reporting.get(h.id));
       return {
         id: h.id,
         name: h.name,
@@ -74,7 +91,8 @@ export async function GET(req: NextRequest) {
         joinCode: h.joinCode,
         status: h.status,
         currentEmissions: currentMonthSummary?.totalKg ?? 0,
-        score: currentMonthSummary?.score ?? 70,
+        score: currentMonthSummary ? Math.round(currentMonthSummary.score) : null,
+        reportingMonth: currentMonthSummary?.month ?? null,
         memberCount: h.memberships.length,
       };
     });
@@ -98,9 +116,9 @@ export async function GET(req: NextRequest) {
     } else if (sort === "emissions_desc") {
       formatted.sort((a, b) => b.currentEmissions - a.currentEmissions);
     } else if (sort === "score_desc") {
-      formatted.sort((a, b) => b.score - a.score);
+      formatted.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
     } else if (sort === "score_asc") {
-      formatted.sort((a, b) => a.score - b.score);
+      formatted.sort((a, b) => (a.score ?? 101) - (b.score ?? 101));
     }
 
     const total = formatted.length;
@@ -122,6 +140,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getRequestUser(req);
+    if (!user && process.env.DEMO_AUTH !== "1") {
+      return NextResponse.json({ error: "Unauthenticated: please log in" }, { status: 401 });
+    }
+    if (user?.platformRole === "MERCHANT") {
+      return NextResponse.json({ error: "Shop accounts can't own a household. Sign up separately for your home." }, { status: 403 });
+    }
     const body = await req.json();
     const data = CreateHouseholdSchema.parse(body);
 
@@ -142,20 +167,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Create initial monthly summary
+    await ensureHouseholdIdentity(newHh.id); // permanent Carbon ID, public share token and private card code
+
+    // Creator becomes OWNER. The household starts empty: numbers only come from logged data.
+    if (user) {
+      await db.membership.create({
+        data: { householdId: newHh.id, userId: user.id, role: "OWNER", status: "ACTIVE" },
+      });
+    }
     await db.monthlySummary.create({
       data: {
         householdId: newHh.id,
-        month: "2026-03",
-        totalKg: data.hasSolar ? 180 : 280,
-        byCategory: JSON.stringify({
-          Electricity: data.hasSolar ? 70 : 140,
-          Transport: 60,
-          Food: 40,
-          Travel: 20,
-          Waste: 10,
-        }),
-        score: data.hasSolar ? 85 : 70,
+        month: new Date().toISOString().slice(0, 7),
+        totalKg: 0,
+        byCategory: JSON.stringify({}),
+        score: 0,
       },
     });
 

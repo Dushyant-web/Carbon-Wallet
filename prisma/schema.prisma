@@ -8,41 +8,65 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  name        String
-  email       String       @unique
-  createdAt   DateTime     @default(now()) @map("created_at")
-  memberships Membership[]
-  auditLogs   AuditLog[]
+  id                  String             @id @default(cuid())
+  name                String
+  email               String             @unique
+  passwordHash        String?            @map("password_hash")
+  platformRole        String             @default("USER") @map("platform_role") // USER, ADMIN, MERCHANT
+  status              String             @default("ACTIVE") // ACTIVE, DISABLED
+  lastLoginAt         DateTime?          @map("last_login_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  memberships         Membership[]
+  auditLogs           AuditLog[]
+  sessions            Session[]
+  pushSubscriptions   PushSubscription[]
+  merchant            Merchant?
+  notifyPrefs         String?            @map("notify_prefs") // JSON: which reminders, and quiet hours (reminders.service.ts)
+  consentVersion      String?            @map("consent_version") // the privacy notice this person agreed to (privacy.service.ts)
+  consentAt           DateTime?          @map("consent_at")
+  deletionRequestedAt DateTime?          @map("deletion_requested_at") // status DELETION_PENDING: erased 30 days after this
 
   @@map("users")
 }
 
 model Household {
-  id               String            @id @default(cuid())
-  name             String
-  city             String
-  state            String
-  country          String            @default("IN")
-  size             Int
-  homeType         String            @map("home_type")
-  floorAreaM2      Float             @map("floor_area_m2")
-  monthlyBudgetInr Float?            @map("monthly_budget_inr")
-  joinCode         String            @unique @map("join_code")
-  status           String            @default("ACTIVE")
-  createdAt        DateTime          @default(now()) @map("created_at")
-  memberships      Membership[]
-  activities       Activity[]
-  emissionEvents   EmissionEvent[]
-  recurringRules   RecurringRule[]
-  appliances       Appliance[]
-  vehicles         Vehicle[]
-  monthlySummaries MonthlySummary[]
-  recommendations  Recommendation[]
-  challenges       Challenge[]
-  goals            Goal[]
-  budgets          Budget[]
-  auditLogs        AuditLog[]
+  id                  String           @id @default(cuid())
+  name                String
+  city                String
+  state               String
+  country             String           @default("IN")
+  size                Int
+  homeType            String           @map("home_type")
+  floorAreaM2         Float            @map("floor_area_m2")
+  monthlyBudgetInr    Float?           @map("monthly_budget_inr")
+  joinCode            String           @unique @map("join_code")
+  carbonId            String?          @unique @map("carbon_id") // CW-UP-26-0001-7, permanent public identifier
+  publicToken         String?          @unique @map("public_token") // unguessable token behind the shareable public page
+  cardCode            String?          @unique @map("card_code") // private barcode/NFC code, only Carbon Wallet readers resolve it
+  status              String           @default("ACTIVE") // ACTIVE, ARCHIVED, DELETION_PENDING
+  deletionRequestedAt DateTime?        @map("deletion_requested_at") // erased (with its files and sealed-statement salts) 30 days after this
+  createdAt           DateTime         @default(now()) @map("created_at")
+  memberships         Membership[]
+  activities          Activity[]
+  emissionEvents      EmissionEvent[]
+  recurringRules      RecurringRule[]
+  appliances          Appliance[]
+  vehicles            Vehicle[]
+  fuelLogs            FuelLog[]
+  monthlySummaries    MonthlySummary[]
+  recommendations     Recommendation[]
+  challenges          Challenge[]
+  goals               Goal[]
+  checkIns            CheckIn[]
+  shareLinks          ShareLink[]
+  budgets             Budget[]
+  auditLogs           AuditLog[]
+  cards               Card[]
+  documents           Document[]
+  bills               Bill[]
+  calibrations        Calibration[]
+  merchantScans       MerchantScan[]
+  merchantSales       MerchantSale[]
 
   @@map("households")
 }
@@ -78,21 +102,30 @@ model EmissionFactor {
 }
 
 model Activity {
-  id              String          @id @default(cuid())
-  householdId     String          @map("household_id")
-  memberId        String?         @map("member_id")
-  category        String // Electricity, Transport, Travel, Food, Waste
-  type            String // ac_cooling, petrol_car, flight_economy, etc.
-  quantity        Float
-  unit            String
-  occurredOn      DateTime        @map("occurred_on")
-  source          String          @default("MANUAL") // MANUAL, SMART_METER, RECURRING, BILL_IMPORT
-  recurringRuleId String?         @map("recurring_rule_id")
-  notes           String?
-  createdAt       DateTime        @default(now()) @map("created_at")
-  household       Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  recurringRule   RecurringRule?  @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
-  emissionEvents  EmissionEvent[]
+  id                 String          @id @default(cuid())
+  householdId        String          @map("household_id")
+  memberId           String?         @map("member_id")
+  category           String // Electricity, Transport, Travel, Food, Waste
+  type               String // ac_cooling, petrol_car, flight_economy, etc.
+  quantity           Float
+  unit               String
+  occurredOn         DateTime        @map("occurred_on")
+  source             String          @default("MANUAL") // MANUAL, SMART_METER, RECURRING, BILL_IMPORT
+  recurringRuleId    String?         @map("recurring_rule_id")
+  notes              String?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  household          Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recurringRule      RecurringRule?  @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+  emissionEvents     EmissionEvent[]
+  // Energy imported from a confirmed bill (deleted with the bill)
+  billId             String?         @map("bill_id")
+  bill               Bill?           @relation("BillActivities", fields: [billId], references: [id], onDelete: Cascade)
+  // Logged electricity that a bill now covers: kept for the ledger, excluded from totals
+  coveredByBillId    String?         @map("covered_by_bill_id")
+  coveredByBill      Bill?           @relation("CoveredByBill", fields: [coveredByBillId], references: [id], onDelete: SetNull)
+  // Km-based trips that a logged fuel fill-up for the same car and month replaces
+  coveredByFuelLogId String?         @map("covered_by_fuel_log_id")
+  coveredByFuelLog   FuelLog?        @relation("CoveredByFuel", fields: [coveredByFuelLogId], references: [id], onDelete: SetNull)
 
   @@index([householdId, occurredOn])
   @@map("activities")
@@ -128,31 +161,78 @@ model RecurringRule {
 }
 
 model Appliance {
-  id             String    @id @default(cuid())
-  householdId    String    @map("household_id")
+  id             String        @id @default(cuid())
+  householdId    String        @map("household_id")
   name           String?
   type           String // AC, Refrigerator, WaterHeater, WashingMachine, SolarPV, etc.
   rating         String // 5_STAR, 4_STAR, 3_STAR, INVERTER, NON_INVERTER
-  powerKw        Float     @map("power_kw")
-  avgHoursPerDay Float     @map("avg_hours_per_day")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  household      Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  powerKw        Float         @map("power_kw")
+  avgHoursPerDay Float         @map("avg_hours_per_day")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  // Who put it here: the owner, or a registered shop at the counter (merchant.service.ts). Shop-entered specs are locked.
+  source         String        @default("OWNER") // OWNER, MERCHANT
+  brand          String?
+  model          String?
+  serialNo       String?       @map("serial_no")
+  purchasedOn    DateTime?     @map("purchased_on")
+  // From the BEE star label. Star bands are re-based every few years, so the label's year says what its stars mean.
+  capacityTon    Float?        @map("capacity_ton")
+  annualKwh      Float?        @map("annual_kwh")
+  labelYear      Int?          @map("label_year")
+  refrigerant    String? // R32, R410A, R290, R22
+  household      Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  sale           MerchantSale?
 
+  @@unique([householdId, serialNo])
   @@map("appliances")
 }
 
 model Vehicle {
-  id          String    @id @default(cuid())
-  householdId String    @map("household_id")
-  name        String?
-  type        String // Car, TwoWheeler, SUV, PublicTransit
-  fuel        String // Petrol, Diesel, CNG, Electric, Hybrid
-  kmPerUnit   Float     @map("km_per_unit")
-  monthlyKm   Float     @map("monthly_km")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  id             String        @id @default(cuid())
+  householdId    String        @map("household_id")
+  name           String?
+  type           String // Car, TwoWheeler, SUV, PublicTransit
+  fuel           String // Petrol, Diesel, CNG, Electric, Hybrid
+  kmPerUnit      Float         @map("km_per_unit")
+  monthlyKm      Float         @map("monthly_km")
+  year           Int? // model year, for age-adjusted mileage
+  createdAt      DateTime      @default(now()) @map("created_at")
+  source         String        @default("OWNER") // OWNER, MERCHANT (registered by the dealer at the counter)
+  make           String?
+  model          String?
+  vin            String? // chassis number
+  registrationNo String?       @map("registration_no") // often given by the RTO after the sale
+  purchasedOn    DateTime?     @map("purchased_on")
+  household      Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  fuelLogs       FuelLog[]
+  sale           MerchantSale?
 
+  @@unique([householdId, vin])
   @@map("vehicles")
+}
+
+/// A fuel fill-up (from a pump-display photo or typed in). Litres burned × fuel factor = CO2.
+model FuelLog {
+  id           String     @id @default(cuid())
+  householdId  String     @map("household_id")
+  vehicleId    String     @map("vehicle_id")
+  fuel         String // Petrol, Diesel, CNG (kg)
+  quantity     Float // litres, or kg for CNG
+  amountInr    Float?     @map("amount_inr")
+  pricePerUnit Float?     @map("price_per_unit")
+  filledOn     DateTime   @map("filled_on")
+  kgCo2e       Float      @map("kg_co2e")
+  estimatedKm  Float?     @map("estimated_km")
+  source       String     @default("MANUAL") // PHOTO, MANUAL
+  activityId   String?    @unique @map("activity_id")
+  createdById  String     @map("created_by_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  household    Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  covers       Activity[] @relation("CoveredByFuel")
+
+  @@index([householdId, filledOn])
+  @@map("fuel_logs")
 }
 
 model MonthlySummary {
@@ -171,18 +251,26 @@ model MonthlySummary {
 }
 
 model Recommendation {
-  id          String    @id @default(cuid())
-  householdId String    @map("household_id")
-  action      String
-  description String?
-  category    String?
-  kgSaved     Float     @map("kg_saved")
-  inrSaved    Float     @map("inr_saved")
-  difficulty  String // EASY, MEDIUM, HARD
-  status      String    @default("PENDING") // PENDING, ACCEPTED, DISMISSED, COMPLETED
-  appliedAt   DateTime? @map("applied_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  householdId  String    @map("household_id")
+  action       String
+  description  String?
+  category     String?
+  kgSaved      Float     @map("kg_saved")
+  inrSaved     Float     @map("inr_saved")
+  difficulty   String // EASY, MEDIUM, HARD
+  status       String    @default("PENDING") // PENDING, ACCEPTED, DISMISSED, COMPLETED
+  appliedAt    DateTime? @map("applied_at")
+  // Commit → verify: what was promised for which month, and what the bills later showed
+  commitMonth  String?   @map("commit_month") // "YYYY-MM" the commitment is checked against
+  expectedLow  Float?    @map("expected_low") // kg a month
+  expectedHigh Float?    @map("expected_high")
+  realizedKg   Float?    @map("realized_kg")
+  verification String? // BILL (measured, weather-adjusted), FUEL (from fill-ups), DECLARED (no data: half credit)
+  verifiedAt   DateTime? @map("verified_at")
+  verifyNote   String?   @map("verify_note")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@map("recommendations")
 }
@@ -195,10 +283,13 @@ model Challenge {
   kgSaved     Float     @map("kg_saved")
   inrSaved    Float     @map("inr_saved")
   streak      Int       @default(0)
-  status      String    @default("ACTIVE")
+  status      String    @default("ACTIVE") // ACTIVE (joined), COMPLETED
+  daysDone    Int       @default(0) @map("days_done")
+  lastCheckIn DateTime? @map("last_check_in") // one check-in per day (IST)
   createdAt   DateTime  @default(now()) @map("created_at")
   household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
+  @@unique([householdId, template])
   @@map("challenges")
 }
 
@@ -207,7 +298,11 @@ model Goal {
   householdId String    @map("household_id")
   targetPct   Float     @map("target_pct")
   deadline    DateTime
-  status      String    @default("ACTIVE")
+  status      String    @default("ACTIVE") // ACTIVE, REPLACED, STOPPED
+  startMonth  String?   @map("start_month") // "YYYY-MM": the first month with a target
+  glideMonths Int       @default(6) @map("glide_months") // the cut grows to the full % over this many months
+  baselineKg  Float?    @map("baseline_kg") // the start month's baseline when the goal was set (for display)
+  createdById String?   @map("created_by_id")
   createdAt   DateTime  @default(now()) @map("created_at")
   household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
@@ -240,4 +335,233 @@ model AuditLog {
 
   @@index([householdId, at])
   @@map("audit_log")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique @map("token_hash") // SHA-256 of the cookie token; the raw token is never stored
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Card {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  uid         String    @unique // NFC chip serial (hex, uppercase, no separators)
+  label       String    @default("Carbon Card")
+  status      String    @default("ACTIVE") // ACTIVE, REVOKED
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastUsedAt  DateTime? @map("last_used_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("cards")
+}
+
+model Document {
+  id           String    @id @default(cuid())
+  householdId  String    @map("household_id")
+  uploadedById String?   @map("uploaded_by_id")
+  kind         String    @default("ELECTRICITY_BILL")
+  fileName     String    @map("file_name")
+  mimeType     String    @map("mime_type")
+  sizeBytes    Int       @map("size_bytes")
+  sha256       String
+  storagePath  String?   @map("storage_path") // null once the original file is deleted
+  previewCount Int       @default(0) @map("preview_count")
+  status       String    @default("EXTRACTED") // EXTRACTED, NEEDS_REVIEW, CONFIRMED, REJECTED
+  extraction   String // JSON: fields, confidence, warnings, discom (previews stored as encrypted files)
+  aiUsed       Boolean   @default(false) @map("ai_used")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  bill         Bill?
+
+  @@unique([householdId, sha256])
+  @@map("documents")
+}
+
+model Bill {
+  id             String     @id @default(cuid())
+  householdId    String     @map("household_id")
+  documentId     String?    @unique @map("document_id")
+  periodStart    DateTime   @map("period_start")
+  periodEnd      DateTime   @map("period_end")
+  kwh            Float
+  importKwh      Float?     @map("import_kwh")
+  exportKwh      Float?     @map("export_kwh")
+  amountInr      Float?     @map("amount_inr")
+  acHoursPerDay  Float      @default(0) @map("ac_hours_per_day")
+  heatDays       Int?       @map("heat_days") // IMD heatwave days in the period (null until weather was checked)
+  heatDates      String?    @map("heat_dates") // JSON array of those days, "YYYY-MM-DD"
+  discom         String?
+  consumerHash   String?    @map("consumer_hash")
+  consumerMasked String?    @map("consumer_masked")
+  source         String     @default("UPLOAD") // UPLOAD, MANUAL
+  verified       Boolean    @default(false) // checked by a platform admin
+  confirmedById  String?    @map("confirmed_by_id")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  household      Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  document       Document?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  activities     Activity[] @relation("BillActivities")
+  covered        Activity[] @relation("CoveredByBill")
+
+  @@index([householdId, periodStart])
+  @@map("bills")
+}
+
+model Calibration {
+  id             String    @id @default(cuid())
+  householdId    String    @map("household_id")
+  acKw           Float     @map("ac_kw")
+  acKwLow        Float     @map("ac_kw_low")
+  acKwHigh       Float     @map("ac_kw_high")
+  baseloadKwhDay Float     @map("baseload_kwh_day")
+  method         String // regression, single_bill, default
+  nBills         Int       @map("n_bills")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  household      Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, createdAt])
+  @@map("calibrations")
+}
+
+/// A weekly 60-second check-in: the week's car km, transit km and AC hours. Its activities carry
+/// source CHECKIN; weeks that were missed are filled from the latest answers with source ROUTINE.
+model CheckIn {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  weekStart   DateTime  @map("week_start") // Monday 00:00 IST, stored as that instant in UTC
+  answers     String // JSON
+  estimated   Boolean   @default(false) // filled from the routine, not answered
+  createdById String?   @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, weekStart])
+  @@map("check_ins")
+}
+
+/// A link a household gives a bank or employer: it shows the chosen sealed months and lets them check each
+/// one against the chain, without an account. It expires and can be revoked; every view is counted.
+model ShareLink {
+  id          String    @id @default(cuid())
+  token       String    @unique // unguessable, in the URL
+  householdId String    @map("household_id")
+  months      String // JSON array of "YYYY-MM"
+  label       String? // who it's for, e.g. "SBI home loan" (shown only to the household)
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  views       Int       @default(0)
+  lastViewAt  DateTime? @map("last_view_at")
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("share_links")
+}
+
+/// A device that agreed to reminders (Web Push). Removed when the push service says it's gone.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastSentAt DateTime? @map("last_sent_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+/// One row per reminder sent, so the scheduler can run as often as it likes and never repeat itself.
+model SentReminder {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  householdId String   @map("household_id")
+  kind        String // CHECKIN, BILL, GOAL
+  periodKey   String   @map("period_key") // the week or bill period it was about
+  sentAt      DateTime @default(now()) @map("sent_at")
+
+  @@unique([userId, householdId, kind, periodKey])
+  @@map("sent_reminders")
+}
+
+/// What was erased and when, with no ids or personal data: the only trace an erased account leaves.
+model ErasureLog {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  users      Int      @default(0)
+  households Int      @default(0)
+  statements Int      @default(0) // sealed statements whose salts were destroyed
+  files      Int      @default(0) // households whose stored bill files were removed
+
+  @@map("erasure_log")
+}
+
+/// A shop selling appliances and/or vehicles. Signs up, then a platform admin approves it before it can scan cards.
+model Merchant {
+  id           String         @id @default(cuid())
+  userId       String         @unique @map("user_id")
+  businessName String         @map("business_name")
+  gstin        String?
+  city         String
+  state        String
+  sells        String // APPLIANCES, VEHICLES, BOTH
+  status       String         @default("PENDING") // PENDING, APPROVED, SUSPENDED
+  reviewedAt   DateTime?      @map("reviewed_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scans        MerchantScan[]
+  sales        MerchantSale[]
+
+  @@map("merchants")
+}
+
+/// One card scan at a shop counter: a short-lived ticket to register items to that household.
+model MerchantScan {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique @map("token_hash") // SHA-256 of the ticket; the raw ticket is never stored
+  merchantId  String    @map("merchant_id")
+  householdId String    @map("household_id")
+  via         String // CODE (barcode / chip code / typed), CHIP (paired NFC chip serial)
+  items       Int       @default(0)
+  expiresAt   DateTime  @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, createdAt])
+  @@map("merchant_scans")
+}
+
+/// What a shop registered to a household. Outlives the item, so the shop keeps its history and admins see rejections.
+model MerchantSale {
+  id          String     @id @default(cuid())
+  merchantId  String     @map("merchant_id")
+  householdId String?    @map("household_id") // cleared when the household is erased
+  kind        String // APPLIANCE, VEHICLE
+  applianceId String?    @unique @map("appliance_id")
+  vehicleId   String?    @unique @map("vehicle_id")
+  summary     String // "1.5 t 5-star inverter AC", for the shop's history
+  invoiceRef  String?    @map("invoice_ref")
+  status      String     @default("REGISTERED") // REGISTERED, REJECTED (owner: not ours), REMOVED (sold or scrapped)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  closedAt    DateTime?  @map("closed_at")
+  merchant    Merchant   @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  vehicle     Vehicle?   @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId, createdAt])
+  @@index([householdId])
+  @@map("merchant_sales")
 }

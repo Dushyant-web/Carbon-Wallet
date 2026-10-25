@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { Capability, hasPermission } from "./permissions";
+import { getRequestUser, type SessionUser } from "./session";
 import { Role } from "@/types";
+import type { Merchant } from "@prisma/client";
 
 export interface AuthContext {
   userId: string;
@@ -18,77 +20,92 @@ export class AuthError extends Error {
   }
 }
 
+const ROLE_RANK: Record<Role, number> = { VIEWER: 1, MEMBER: 2, OWNER: 3 };
+
 /**
- * Route guard checking authentication, household tenant membership, and required role capabilities.
+ * Legacy identity resolution (x-user-id header, first-member fallback). Only for the automated
+ * test suite: enabled when DEMO_AUTH=1, never in a normal run.
+ */
+async function legacyUserId(req: NextRequest | Request, householdId: string): Promise<string | null> {
+  if (process.env.DEMO_AUTH !== "1") return null;
+  const headerId = req.headers.get("x-user-id");
+  if (headerId) return headerId;
+  const first = await db.membership.findFirst({
+    where: { householdId, status: "ACTIVE" },
+    orderBy: { joinedAt: "asc" },
+  });
+  return first?.userId ?? null;
+}
+
+/**
+ * Route guard: session user → active membership in this household → capability check.
+ * The demo "Acting as" switcher may only lower the effective role, never raise it.
  */
 export async function requireMembership(
   req: NextRequest | Request,
   householdId: string,
   requiredCapability?: Capability
 ): Promise<AuthContext> {
-  // 1. Resolve user ID from headers or cookies
-  const headers = req.headers;
-  let userId = headers.get("x-user-id");
-  const demoRoleOverride = headers.get("x-demo-role") as Role | null;
-
-  // Check cookie if no header
-  if (!userId && "cookies" in req) {
-    const nextReq = req as NextRequest;
-    userId = nextReq.cookies.get("carbonos_user_id")?.value || null;
-  }
-
-  // Fallback for default demo: if no userId specified, pick the owner/first member of this household
-  if (!userId) {
-    const defaultMember = await db.membership.findFirst({
-      where: { householdId, status: "ACTIVE" },
-      orderBy: { joinedAt: "asc" },
-    });
-    if (defaultMember) {
-      userId = defaultMember.userId;
-    }
-  }
+  const sessionUser = await getRequestUser(req);
+  const userId = sessionUser?.id ?? (await legacyUserId(req, householdId));
 
   if (!userId) {
-    throw new AuthError("Unauthenticated: No user session found", 401);
+    throw new AuthError("Unauthenticated: please log in", 401);
   }
 
-  // 2. Query membership scoped to householdId
   const membership = await db.membership.findUnique({
-    where: {
-      householdId_userId: {
-        householdId,
-        userId,
-      },
-    },
-    include: {
-      user: true,
-      household: true,
-    },
+    where: { householdId_userId: { householdId, userId } },
   });
+  // a household being deleted is gone for everyone, admins included (privacy.service.ts)
+  const target = await db.household.findUnique({ where: { id: householdId }, select: { status: true } });
+  if (target?.status === "DELETION_PENDING") throw new AuthError("Household not found", 404);
 
-  if (!membership || membership.status !== "ACTIVE") {
+  let realRole: Role;
+  if (membership && membership.status === "ACTIVE") {
+    realRole = membership.role as Role;
+  } else if (sessionUser?.platformRole === "ADMIN") {
+    // Platform admins can look at any household for support, but only read: never change its data
+    const exists = await db.household.findUnique({ where: { id: householdId }, select: { id: true } });
+    if (!exists) throw new AuthError("Household not found", 404);
+    realRole = "VIEWER";
+  } else {
     throw new AuthError("Forbidden: You are not an active member of this household", 403);
   }
 
-  // 3. Determine effective role (support demo role switcher)
-  const effectiveRole = (demoRoleOverride || membership.role) as Role;
+  const requested = req.headers.get("x-demo-role") as Role | null;
+  const effectiveRole =
+    requested && ROLE_RANK[requested] !== undefined && ROLE_RANK[requested] <= ROLE_RANK[realRole]
+      ? requested
+      : realRole;
 
-  // 4. Check capability
-  if (requiredCapability) {
-    const allowed = hasPermission(effectiveRole, requiredCapability);
-    if (!allowed) {
-      throw new AuthError(
-        `Forbidden: Role '${effectiveRole}' lacks capability '${requiredCapability}'`,
-        403
-      );
-    }
+  if (requiredCapability && !hasPermission(effectiveRole, requiredCapability)) {
+    throw new AuthError(`Forbidden: Role '${effectiveRole}' lacks capability '${requiredCapability}'`, 403);
   }
 
-  return {
-    userId,
-    householdId,
-    role: effectiveRole,
-  };
+  return { userId, householdId, role: effectiveRole };
+}
+
+export async function requireUser(req: NextRequest | Request): Promise<SessionUser> {
+  const user = await getRequestUser(req);
+  if (!user) throw new AuthError("Unauthenticated: please log in", 401);
+  return user;
+}
+
+export async function requireAdmin(req: NextRequest | Request): Promise<SessionUser> {
+  const user = await requireUser(req);
+  if (user.platformRole !== "ADMIN") throw new AuthError("Forbidden: admin only", 403);
+  return user;
+}
+
+/** A signed-in shop that a platform admin has approved. Merchants never belong to a household. */
+export async function requireMerchant(req: NextRequest | Request): Promise<{ user: SessionUser; merchant: Merchant }> {
+  const user = await requireUser(req);
+  if (user.platformRole !== "MERCHANT") throw new AuthError("Forbidden: merchants only", 403);
+  const merchant = await db.merchant.findUnique({ where: { userId: user.id } });
+  if (!merchant) throw new AuthError("Forbidden: no shop is linked to this account", 403);
+  if (merchant.status === "PENDING") throw new AuthError("Your shop is waiting for approval by Carbon Wallet.", 403);
+  if (merchant.status !== "APPROVED") throw new AuthError("Your shop has been suspended. Contact Carbon Wallet.", 403);
+  return { user, merchant };
 }
 
 /**

@@ -1,46 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireMembership, handleAuthError } from "@/server/auth/guard";
-import { challengeService } from "@/server/services/challenge.service";
 import { z } from "zod";
+import { requireMembership, handleAuthError } from "@/server/auth/guard";
+import { ChallengeError, challengeService } from "@/server/services/challenge.service";
 
-const UpdateChallengeSchema = z.object({
-  challengeId: z.string(),
-  incrementDays: z.number().int().min(1).default(1),
+const ActionSchema = z.object({
+  template: z.string().min(1).max(40),
+  action: z.enum(["join", "checkin", "leave"]),
 });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: householdId } = await params;
     await requireMembership(req, householdId, "data:read");
-
-    const challenges = await challengeService.listChallenges(householdId);
-    return NextResponse.json({ challenges });
+    return NextResponse.json(await challengeService.list(householdId));
   } catch (err) {
     return handleAuthError(err);
   }
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/** Join a challenge, check in for today (once a day), or leave it. Viewers can't. */
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: householdId } = await params;
-    // Guard: Requires recommendation:apply capability (Viewer blocked with 403!)
-    await requireMembership(req, householdId, "recommendation:apply");
-
-    const body = await req.json();
-    const data = UpdateChallengeSchema.parse(body);
-
-    const updated = await challengeService.updateProgress(householdId, data.challengeId, data.incrementDays);
-    return NextResponse.json({ challenge: updated }, { status: 200 });
-  } catch (err) {
-    if (err && typeof err === "object" && "name" in err && err.name === "ZodError") {
-      return NextResponse.json({ error: "Validation Error", details: err }, { status: 400 });
+    await requireMembership(req, householdId, "challenge:join");
+    const parsed = ActionSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Send { template, action }" }, { status: 400 });
+    const { template, action } = parsed.data;
+    try {
+      const out =
+        action === "join"
+          ? await challengeService.join(householdId, template)
+          : action === "leave"
+            ? await challengeService.leave(householdId, template)
+            : await challengeService.checkIn(householdId, template);
+      return NextResponse.json(out);
+    } catch (err) {
+      if (err instanceof ChallengeError) return NextResponse.json({ error: err.message }, { status: err.status });
+      throw err;
     }
+  } catch (err) {
     return handleAuthError(err);
   }
 }

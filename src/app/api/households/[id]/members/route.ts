@@ -6,7 +6,7 @@ import { z } from "zod";
 const AddMemberSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  role: z.enum(["ADMIN", "MEMBER", "VIEWER"]).default("MEMBER"),
+  role: z.enum(["MEMBER", "VIEWER"]).default("MEMBER"), // family or view only; a household has one owner
 });
 
 export async function GET(
@@ -55,6 +55,11 @@ export async function POST(
       update: { name: data.name },
       create: { name: data.name, email: data.email },
     });
+
+    const existing = await db.membership.findUnique({ where: { householdId_userId: { householdId, userId: user.id } } });
+    if (existing?.role === "OWNER") {
+      return NextResponse.json({ error: "That person owns this household already." }, { status: 409 });
+    }
 
     const membership = await db.membership.upsert({
       where: {

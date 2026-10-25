@@ -35,9 +35,14 @@ describe("Phase 5: Overview Spec & Cohort Benchmarking", () => {
       expect(data.trendHistory.length).toBe(6);
       expect(data.trendHistory[data.trendHistory.length - 1].totalKg).toBe(profile.targetMonthlyKg);
 
-      // 5. Next Best Action exists
-      expect(data.nextBestAction.action).toBeDefined();
-      expect(data.nextBestAction.kgSaved).toBeGreaterThan(0);
+      // 5. Next best action is a real pending recommendation, or null when there is none (never invented)
+      const pending = await db.recommendation.findMany({ where: { householdId: profile.id, status: "PENDING" } });
+      if (pending.length === 0) {
+        expect(data.nextBestAction).toBeNull();
+      } else {
+        expect(pending.map((r) => r.id)).toContain(data.nextBestAction.id);
+        expect(data.nextBestAction.kgSaved).toBeGreaterThan(0);
+      }
     }
   });
 
@@ -88,9 +93,11 @@ describe("Phase 5: Overview Spec & Cohort Benchmarking", () => {
     expect(data.householdId).toBe("hh_01_sharma");
     expect(data.cohortCount).toBeGreaterThanOrEqual(10);
     expect(data.cohortMedianTotal).toBeGreaterThan(150);
-    expect(data.leader.name).toContain("Patel");
+    // Other homes are anonymous in the API: Patel (132 kg) leads, but only by number
+    expect(data.leader.name).toBe("Cleanest home");
+    expect(JSON.stringify(data.cohortList)).not.toContain("Patel");
     expect(data.leader.emissions).toBe(132);
-    expect(data.highest.name).toContain("Kapoor");
+    expect(data.highest.name).toBe("Highest home");
     expect(data.highest.emissions).toBe(398);
   });
 });

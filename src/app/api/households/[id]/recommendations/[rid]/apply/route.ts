@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
+import { commitmentFields } from "@/server/services/commitment.service";
 
 export async function POST(
   req: NextRequest,
@@ -23,6 +24,8 @@ export async function POST(
       data: {
         status: "ACCEPTED",
         appliedAt: new Date(),
+        // checked later against the next bill or fill-ups (commitment.service.ts)
+        ...commitmentFields(recommendation.kgSaved),
       },
     });
 

@@ -72,7 +72,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 51.7, // ~148 kg
     members: [
       { name: "Arjun Sharma", email: "arjun.sharma@example.com", role: "OWNER" },
-      { name: "Pooja Sharma", email: "pooja.sharma@example.com", role: "ADMIN" },
+      { name: "Pooja Sharma", email: "pooja.sharma@example.com", role: "MEMBER" },
       { name: "Rohan Sharma", email: "rohan.sharma@example.com", role: "MEMBER" },
       { name: "Meera Sharma", email: "meera.sharma@example.com", role: "VIEWER" },
     ],
@@ -126,7 +126,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 46.2, // ~158 kg
     members: [
       { name: "Virendra Mehta", email: "virendra.mehta@example.com", role: "OWNER" },
-      { name: "Sunita Mehta", email: "sunita.mehta@example.com", role: "ADMIN" },
+      { name: "Sunita Mehta", email: "sunita.mehta@example.com", role: "MEMBER" },
       { name: "Aarav Mehta", email: "aarav.mehta@example.com", role: "MEMBER" },
       { name: "Diya Mehta", email: "diya.mehta@example.com", role: "MEMBER" },
       { name: "Kavita Mehta", email: "kavita.mehta@example.com", role: "VIEWER" },
@@ -171,7 +171,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 54.2, // ~116 kg
     members: [
       { name: "Sameer Verma", email: "sameer.verma@example.com", role: "OWNER" },
-      { name: "Anita Verma", email: "anita.verma@example.com", role: "ADMIN" },
+      { name: "Anita Verma", email: "anita.verma@example.com", role: "MEMBER" },
       { name: "Kabir Verma", email: "kabir.verma@example.com", role: "MEMBER" },
     ],
     appliances: [
@@ -213,7 +213,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 52.0, // ~207 kg
     members: [
       { name: "Rajesh Kapoor", email: "rajesh.kapoor@example.com", role: "OWNER" },
-      { name: "Nalini Kapoor", email: "nalini.kapoor@example.com", role: "ADMIN" },
+      { name: "Nalini Kapoor", email: "nalini.kapoor@example.com", role: "MEMBER" },
       { name: "Tara Kapoor", email: "tara.kapoor@example.com", role: "MEMBER" },
       { name: "Dev Kapoor", email: "dev.kapoor@example.com", role: "VIEWER" },
     ],
@@ -256,7 +256,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 47.9, // ~130 kg
     members: [
       { name: "Harpreet Singh", email: "harpreet.singh@example.com", role: "OWNER" },
-      { name: "Gurpreet Singh", email: "gurpreet.singh@example.com", role: "ADMIN" },
+      { name: "Gurpreet Singh", email: "gurpreet.singh@example.com", role: "MEMBER" },
       { name: "Simran Singh", email: "simran.singh@example.com", role: "MEMBER" },
       { name: "Jasleen Singh", email: "jasleen.singh@example.com", role: "MEMBER" },
       { name: "Balwant Singh", email: "balwant.singh@example.com", role: "VIEWER" },
@@ -301,7 +301,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 39.8, // ~70 kg net
     members: [
       { name: "Manish Gupta", email: "manish.gupta@example.com", role: "OWNER" },
-      { name: "Ritu Gupta", email: "ritu.gupta@example.com", role: "ADMIN" },
+      { name: "Ritu Gupta", email: "ritu.gupta@example.com", role: "MEMBER" },
       { name: "Varun Gupta", email: "varun.gupta@example.com", role: "MEMBER" },
       { name: "Shanti Gupta", email: "shanti.gupta@example.com", role: "VIEWER" },
     ],
@@ -345,7 +345,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 43.2, // ~64 kg
     members: [
       { name: "Tariq Khan", email: "tariq.khan@example.com", role: "OWNER" },
-      { name: "Ayesha Khan", email: "ayesha.khan@example.com", role: "ADMIN" },
+      { name: "Ayesha Khan", email: "ayesha.khan@example.com", role: "MEMBER" },
       { name: "Zayan Khan", email: "zayan.khan@example.com", role: "MEMBER" },
     ],
     appliances: [
@@ -388,7 +388,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 40.9, // ~54 kg
     members: [
       { name: "Hitesh Patel", email: "hitesh.patel@example.com", role: "OWNER" },
-      { name: "Geeta Patel", email: "geeta.patel@example.com", role: "ADMIN" },
+      { name: "Geeta Patel", email: "geeta.patel@example.com", role: "MEMBER" },
       { name: "Devanshi Patel", email: "devanshi.patel@example.com", role: "MEMBER" },
       { name: "Rushil Patel", email: "rushil.patel@example.com", role: "MEMBER" },
     ],
@@ -431,7 +431,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 58.8, // ~140 kg
     members: [
       { name: "Venkat Iyer", email: "venkat.iyer@example.com", role: "OWNER" },
-      { name: "Lakshmi Iyer", email: "lakshmi.iyer@example.com", role: "ADMIN" },
+      { name: "Lakshmi Iyer", email: "lakshmi.iyer@example.com", role: "MEMBER" },
       { name: "Karthik Iyer", email: "karthik.iyer@example.com", role: "MEMBER" },
       { name: "Subramanian Iyer", email: "subramanian.iyer@example.com", role: "VIEWER" },
       { name: "Janaki Iyer", email: "janaki.iyer@example.com", role: "VIEWER" },
@@ -475,7 +475,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     primarySharePct: 43.6, // ~100 kg
     members: [
       { name: "Anirban Roy", email: "anirban.roy@example.com", role: "OWNER" },
-      { name: "Debashree Roy", email: "debashree.roy@example.com", role: "ADMIN" },
+      { name: "Debashree Roy", email: "debashree.roy@example.com", role: "MEMBER" },
       { name: "Sourav Roy", email: "sourav.roy@example.com", role: "MEMBER" },
     ],
     appliances: [

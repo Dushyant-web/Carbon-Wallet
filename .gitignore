@@ -35,3 +35,17 @@ dev.db
 dev.db-journal
 prisma/dev.db
 prisma/dev.db-journal
+
+# python backend
+backend/.venv/
+backend/*.db
+__pycache__/
+.pytest_cache/
+prisma/test.db
+prisma/test.db-journal
+storage/
+
+# real bills for extraction tuning: personal data, never commit
+private-bills/
+backend/tessdata/*.traineddata
+/.next-verify/

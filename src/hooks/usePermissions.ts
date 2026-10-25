@@ -13,7 +13,6 @@ export function usePermissions() {
     can: (cap: Capability) => hasPermission(role, cap),
     capabilities: getRoleCapabilities(role),
     isOwner: role === "OWNER",
-    isAdmin: role === "ADMIN",
     isMember: role === "MEMBER",
     isViewer: role === "VIEWER",
   };

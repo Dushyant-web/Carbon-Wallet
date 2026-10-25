@@ -59,11 +59,18 @@ describe("Phase 3: Auth, Memberships & Permission Guard", () => {
   });
 
   it("verifies capability matrix correctly maps roles", () => {
-    // activity:create allowed for OWNER, ADMIN, MEMBER; disallowed for VIEWER
+    // Only the owner changes the household; family (MEMBER) may only add electricity bills
     expect(hasPermission("OWNER", "activity:create")).toBe(true);
-    expect(hasPermission("ADMIN", "activity:create")).toBe(true);
-    expect(hasPermission("MEMBER", "activity:create")).toBe(true);
+    expect(hasPermission("MEMBER", "activity:create")).toBe(false);
     expect(hasPermission("VIEWER", "activity:create")).toBe(false);
+
+    expect(hasPermission("OWNER", "bill:create")).toBe(true);
+    expect(hasPermission("MEMBER", "bill:create")).toBe(true);
+    expect(hasPermission("VIEWER", "bill:create")).toBe(false);
+
+    for (const cap of ["checkin:create", "asset:create", "goal:manage", "recommendation:apply", "challenge:join", "household:update"] as const) {
+      expect(hasPermission("MEMBER", cap)).toBe(false);
+    }
 
     // data:read allowed for all
     expect(hasPermission("VIEWER", "data:read")).toBe(true);
@@ -71,12 +78,12 @@ describe("Phase 3: Auth, Memberships & Permission Guard", () => {
 
     // household:archive only for OWNER
     expect(hasPermission("OWNER", "household:archive")).toBe(true);
-    expect(hasPermission("ADMIN", "household:archive")).toBe(false);
     expect(hasPermission("MEMBER", "household:archive")).toBe(false);
     expect(hasPermission("VIEWER", "household:archive")).toBe(false);
 
     expect(getRoleCapabilities("VIEWER")).toContain("data:read");
     expect(getRoleCapabilities("VIEWER")).not.toContain("activity:create");
+    expect(getRoleCapabilities("MEMBER")).toEqual(["bill:create", "forecast:simulate", "data:read"]);
   });
 
   it("Done when criterion: Viewer gets 403 on POST /api/households/:id/activities", async () => {
@@ -105,7 +112,7 @@ describe("Phase 3: Auth, Memberships & Permission Guard", () => {
     expect(data.error).toContain("VIEWER");
   });
 
-  it("allows Member to POST /api/households/:id/activities with 201 Created", async () => {
+  it("refuses a family Member logging an activity with 403 (family can only add bills)", async () => {
     const payload = {
       category: "Electricity",
       type: "grid_electricity",
@@ -125,13 +132,8 @@ describe("Phase 3: Auth, Memberships & Permission Guard", () => {
     });
 
     const res = await postActivity(req, { params: Promise.resolve({ id: householdId }) });
-    expect(res.status).toBe(201);
-
-    const data = await res.json();
-    expect(data.activity).toBeDefined();
-    expect(data.activity.quantity).toBe(12);
-    expect(data.emissionEvent).toBeDefined();
-    expect(data.monthlySummary).toBeDefined();
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("MEMBER");
   });
 
   it("blocks outsider user from accessing a household they are not a member of", async () => {

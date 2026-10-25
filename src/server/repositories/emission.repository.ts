@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { COUNTED_ACTIVITY } from "@/server/counted";
 
 export class EmissionRepository {
   /**
@@ -44,6 +45,8 @@ export class EmissionRepository {
           gte: start,
           lte: end,
         },
+        // Logged electricity that a confirmed bill covers is already inside the bill's kWh.
+        activity: COUNTED_ACTIVITY,
       },
       include: {
         activity: true,

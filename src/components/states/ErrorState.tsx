@@ -12,8 +12,8 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = "Telemetry Feed Unavailable",
-  message = "An unexpected error occurred while communicating with the CarbonOS telemetry pipeline.",
+  title = "Something went wrong",
+  message = "An unexpected error occurred while loading this page.",
   onRetry,
   className = "",
 }: ErrorStateProps) {
@@ -25,7 +25,7 @@ export function ErrorState({
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-600 shadow-tier-1 mb-4 border border-rose-200">
         <AlertCircle className="h-6 w-6" />
       </div>
-      <h3 className="font-heading text-base font-bold text-ink mb-1">
+      <h3 className="font-heading text-base font-medium text-ink mb-1">
         {title}
       </h3>
       <p className="max-w-sm text-xs text-ink-muted leading-relaxed mb-6">

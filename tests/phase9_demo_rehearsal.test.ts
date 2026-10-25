@@ -8,6 +8,7 @@ import { NextRequest } from "next/server";
 
 describe("Phase 9: Demo Script Rehearsal & End-to-End Proof of Concept", () => {
   let createdActivityId: string = "";
+let summaryBefore: { totalKg: number; byCategory: string; score: number } | null = null;
 
   describe("Step 1: Open Sharma Residence (Baseline 286 kg, Electricity-heavy, AC Recommendation)", () => {
     it("retrieves Sharma telemetry matching all calibrated spec targets", async () => {
@@ -76,19 +77,27 @@ describe("Phase 9: Demo Script Rehearsal & End-to-End Proof of Concept", () => {
       expect(data.kpi.topContributor.category).toBe("Transport");
       expect(data.kpi.topContributor.sharePct).toBeGreaterThanOrEqual(45);
 
-      // Recommendation targets mobility / commute
-      expect(data.nextBestAction.category).toBe("Transport");
+      // The top suggestion is the largest computed saving. For Kapoor that's the 3.5 kW VRF AC (1 h less a day
+      // = 105 kWh ≈ 70.9 kg), ahead of moving 1 in 5 diesel-car km to metro (≈ 36.3 kg), even though transport is
+      // the biggest source.
+      const pending = await db.recommendation.findMany({ where: { householdId: "hh_04_kapoor", status: "PENDING" } });
+      expect(data.nextBestAction.kgSaved).toBe(Math.max(...pending.map((r) => r.kgSaved)));
+      expect(pending.some((r) => r.category === "Transport")).toBe(true);
     });
   });
 
   describe("Step 4: Add Activity Event in Sharma & Observe Live Pipeline Recalculation", () => {
-    it("records a 6-hour AC activity in UP grid (+7.38 kg CO₂e) and updates totals live", async () => {
+    it("records a 6-hour AC activity in UP grid (+6.075 kg CO₂e) and updates totals live", async () => {
+      summaryBefore = await db.monthlySummary.findUnique({
+        where: { householdId_month: { householdId: "hh_01_sharma", month: "2026-03" } },
+        select: { totalKg: true, byCategory: true, score: true },
+      });
       // 1. Post new AC cooling activity
       const postReq = new NextRequest("http://localhost:3000/api/households/hh_01_sharma/activities", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-demo-role": "MEMBER",
+          "x-demo-role": "OWNER",
         },
         body: JSON.stringify({
           category: "Electricity",
@@ -111,18 +120,18 @@ describe("Phase 9: Demo Script Rehearsal & End-to-End Proof of Concept", () => {
 
       createdActivityId = postData.activity.id;
 
-      // 6 h * 1.5 kW = 9.0 kWh * 0.82 kg/kWh (UP CEA factor) = 7.38 kg
-      expect(postData.emissionEvent.kgCo2e).toBe(7.38);
+      // 6 h * 1.5 kW = 9.0 kWh * 0.675 kg/kWh (CEA v22) = 6.075 kg
+      expect(postData.emissionEvent.kgCo2e).toBe(6.075);
 
-      // Monthly rollup updated: 286 + 7.38 = 293.4 kg
-      expect(Math.round(postData.monthlySummary.totalKg * 10) / 10).toBe(293.4);
+      // Monthly rollup updated: 286 + 6.075 = 292.1 kg
+      expect(Math.round(postData.monthlySummary.totalKg * 10) / 10).toBe(292.1);
 
       // 2. Overview query immediately reflects updated total
       const overviewReq = new NextRequest("http://localhost:3000/api/households/hh_01_sharma/overview");
       const overviewRes = await getOverview(overviewReq, { params: Promise.resolve({ id: "hh_01_sharma" }) });
       const overviewData = await overviewRes.json();
 
-      expect(overviewData.kpi.totalEmissions).toBe(293.4);
+      expect(Math.round(overviewData.kpi.totalEmissions * 10) / 10).toBe(292.1);
     });
 
     it("resets the demo activity to restore calibrated baseline", async () => {
@@ -130,17 +139,11 @@ describe("Phase 9: Demo Script Rehearsal & End-to-End Proof of Concept", () => {
         await db.emissionEvent.deleteMany({ where: { activityId: createdActivityId } });
         await db.activity.deleteMany({ where: { id: createdActivityId } });
 
-        // Recalculate summary back to 286
+        // Restore the whole summary (total, category split and score), not just the total, so later suites
+        // see consistent data regardless of test order.
         await db.monthlySummary.update({
-          where: {
-            householdId_month: {
-              householdId: "hh_01_sharma",
-              month: "2026-03",
-            },
-          },
-          data: {
-            totalKg: 286.0,
-          },
+          where: { householdId_month: { householdId: "hh_01_sharma", month: "2026-03" } },
+          data: summaryBefore ?? { totalKg: 286.0 },
         });
       }
 

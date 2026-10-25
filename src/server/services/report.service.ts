@@ -1,5 +1,25 @@
 import { db } from "@/server/db";
+import { COUNTED_ACTIVITY } from "@/server/counted";
 import { stateToRegion, OFFICIAL_EMISSION_FACTORS } from "@/server/factors/registry";
+import { benchmarkService } from "@/server/services/benchmark.service";
+
+export class ReportUnavailable extends Error {}
+
+// Readable names for activity types in "top contributors"
+const TYPE_NAMES: Record<string, string> = {
+  grid_electricity: "Grid electricity",
+  ac_cooling: "Air conditioning",
+  petrol_car: "Petrol car",
+  diesel_car: "Diesel car",
+  cng_car: "CNG car",
+  two_wheeler: "Two-wheeler",
+  flight_economy: "Flights",
+  lpg_cooking: "LPG cooking",
+};
+const typeName = (t: string) => TYPE_NAMES[t] ?? t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+// Public transport and hired rides are someone else's fuel: scope 3 for a household
+const SCOPE3_TRANSPORT = /metro|bus|train|rail|taxi|cab|auto|rickshaw|uber|ola/i;
+const ELECTRIC_TRANSPORT = /(^|_)ev(_|$)|electric/i;
 
 export interface MonthlyReportPayload {
   reportId: string;
@@ -25,12 +45,14 @@ export interface MonthlyReportPayload {
     netEmissionsKg: number;
     perCapitaKg: number;
     carbonDensityKgM2: number;
-    carbonScore: number;
-    priorMonthKg: number;
-    momChangeKg: number;
-    momTrendPct: string;
-    cohortPercentile: number;
+    carbonScore: number | null;
+    priorMonthKg: number | null;
+    momChangeKg: number | null;
+    momTrendPct: string | null;
+    cohortPercentile: number | null;
+    cohortCount: number | null;
   };
+  provenance: { nBills: number; nLogs: number; billKg: number; billSharePct: number };
   scopes: {
     scope1: {
       title: string;
@@ -87,6 +109,9 @@ export interface MonthlyReportPayload {
     kgSaved: number;
     inrSaved: number;
     status: string;
+    commitMonth: string | null;
+    realizedKg: number | null;
+    verification: string | null; // BILL, FUEL (measured) or DECLARED (half credit, no data yet)
   }>;
   compliance: {
     protocol: string;
@@ -100,7 +125,7 @@ export interface MonthlyReportPayload {
 export class ReportService {
   async generateMonthlyReport(
     householdId: string,
-    month: string = "2026-03"
+    month: string
   ): Promise<MonthlyReportPayload> {
     const household = await db.household.findUnique({
       where: { id: householdId },
@@ -118,25 +143,22 @@ export class ReportService {
       throw new Error(`Household ${householdId} not found`);
     }
 
-    const currentSummary = household.monthlySummaries.find((s) => s.month === month) ||
-      household.monthlySummaries[0];
+    const currentSummary = household.monthlySummaries.find((s) => s.month === month) ?? null;
+    if (!currentSummary || currentSummary.totalKg <= 0) {
+      throw new ReportUnavailable(`No emissions recorded for ${month}.`);
+    }
 
-    // Compute prior month (e.g. 2026-03 -> 2026-02)
     const [yStr, mStr] = month.split("-");
     const y = parseInt(yStr, 10);
     const m = parseInt(mStr, 10);
-    const prevMonthStr = m === 1
-      ? `${y - 1}-12`
-      : `${y}-${String(m - 1).padStart(2, "0")}`;
+    const prevMonthStr = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    const priorSummary = household.monthlySummaries.find((s) => s.month === prevMonthStr) ?? null;
 
-    const priorSummary = household.monthlySummaries.find((s) => s.month === prevMonthStr);
-
-    const grossEmissionsKg = currentSummary?.totalKg ?? 250;
-    const priorMonthKg = priorSummary?.totalKg ?? grossEmissionsKg;
-    const momChangeKg = Number((grossEmissionsKg - priorMonthKg).toFixed(1));
-    const momTrendPct = priorMonthKg > 0
-      ? `${(((grossEmissionsKg - priorMonthKg) / priorMonthKg) * 100).toFixed(1)}%`
-      : "0.0%";
+    const grossEmissionsKg = currentSummary.totalKg;
+    const priorMonthKg = priorSummary?.totalKg ?? null;
+    const momChangeKg = priorMonthKg !== null ? Number((grossEmissionsKg - priorMonthKg).toFixed(1)) : null;
+    const momTrendPct =
+      priorMonthKg ? `${(((grossEmissionsKg - priorMonthKg) / priorMonthKg) * 100).toFixed(1)}%` : null;
 
     const region = stateToRegion(household.state);
     const gridFactorObj = OFFICIAL_EMISSION_FACTORS.find(
@@ -144,47 +166,94 @@ export class ReportService {
     ) || OFFICIAL_EMISSION_FACTORS.find(
       (f) => f.category === "Electricity" && f.type === "grid_electricity" && f.region === "IN-NATIONAL"
     );
-    const gridFactorKgKwh = gridFactorObj?.kgCo2ePerUnit || 0.82;
+    const gridFactorKgKwh = gridFactorObj?.kgCo2ePerUnit || 0.675;
 
-    // Check solar PV
-    const hasSolar = household.appliances.some((a) => a.type === "SolarPV");
-    const solarOffsetKg = hasSolar ? 220 : 0;
-    const netEmissionsKg = Math.max(0, Number((grossEmissionsKg - solarOffsetKg).toFixed(1)));
+    // Every number below comes from this month's recorded emission events (bill-covered logs excluded)
+    const events = await db.emissionEvent.findMany({
+      where: {
+        householdId,
+        occurredOn: { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) },
+        activity: COUNTED_ACTIVITY,
+      },
+      include: { activity: { include: { bill: true } } },
+    });
 
-    // Parse category breakdown
-    let catMap: Record<string, number> = {};
-    if (currentSummary?.byCategory) {
-      try {
-        catMap = JSON.parse(currentSummary.byCategory);
-      } catch {
-        catMap = { Electricity: grossEmissionsKg * 0.45, Transport: grossEmissionsKg * 0.35, Food: grossEmissionsKg * 0.1, Travel: grossEmissionsKg * 0.05, Waste: grossEmissionsKg * 0.05 };
+    // Solar: net-metered bills already subtract exported units, so there is no separate offset to take off
+    const solarOffsetKg = 0;
+    const netEmissionsKg = grossEmissionsKg;
+
+    const byCat = new Map<string, { kg: number; n: number }>();
+    const byType = new Map<string, { category: string; kg: number; name: string }>();
+    let scope1Kg = 0;
+    let scope2Kg = 0;
+    let scope3Kg = 0;
+    const scope1Src = new Set<string>();
+    const scope2Src = new Set<string>();
+    const scope3Src = new Set<string>();
+    for (const ev of events) {
+      const a = ev.activity;
+      const c = byCat.get(a.category) ?? { kg: 0, n: 0 };
+      c.kg += ev.kgCo2e;
+      c.n += 1;
+      byCat.set(a.category, c);
+      const key = a.billId ? `bill:${a.billId}` : a.type;
+      const name = a.bill ? `Electricity bill${a.bill.discom ? ` (${a.bill.discom})` : ""}` : typeName(a.type);
+      const t = byType.get(key) ?? { category: a.category, kg: 0, name };
+      t.kg += ev.kgCo2e;
+      byType.set(key, t);
+
+      if (a.category === "Electricity" || (a.category === "Transport" && ELECTRIC_TRANSPORT.test(a.type))) {
+        scope2Kg += ev.kgCo2e;
+        scope2Src.add(name);
+      } else if (a.category === "Transport" && !SCOPE3_TRANSPORT.test(a.type)) {
+        scope1Kg += ev.kgCo2e;
+        scope1Src.add(name);
+      } else {
+        scope3Kg += ev.kgCo2e;
+        scope3Src.add(name);
       }
     }
+    const scopeTotal = Math.max(1e-9, scope1Kg + scope2Kg + scope3Kg);
 
-    const categoryEntries = Object.entries(catMap).map(([category, kg]) => ({
-      category,
-      kgCo2e: Number(kg.toFixed(1)),
-      percentage: grossEmissionsKg > 0 ? Math.round((kg / grossEmissionsKg) * 100) : 0,
-      eventCount: 4,
-    }));
+    const categoryEntries = [...byCat.entries()]
+      .map(([category, v]) => ({
+        category,
+        kgCo2e: Number(v.kg.toFixed(1)),
+        percentage: Math.round((v.kg / grossEmissionsKg) * 100),
+        eventCount: v.n,
+      }))
+      .sort((a, b) => b.kgCo2e - a.kgCo2e);
 
-    // Scope breakdown:
-    // Scope 1: Transport direct (excluding EVs), LPG heating
-    const transportKg = catMap["Transport"] || 0;
-    const hasElectricVehicle = household.vehicles.some((v) => v.fuel === "Electric");
-    const scope1Kg = hasElectricVehicle ? Number((transportKg * 0.2).toFixed(1)) : Number(transportKg.toFixed(1));
+    const topContributors = [...byType.values()]
+      .sort((a, b) => b.kg - a.kg)
+      .slice(0, 3)
+      .map((t) => ({
+        name: t.name,
+        category: t.category,
+        kgCo2e: Number(t.kg.toFixed(1)),
+        percentage: Math.round((t.kg / grossEmissionsKg) * 100),
+      }));
 
-    // Scope 2: Electricity grid
-    const electricityKg = catMap["Electricity"] || 0;
-    const scope2Kg = Number(electricityKg.toFixed(1));
+    const billEvents = events.filter((e) => e.activity.billId);
+    const billKg = billEvents.reduce((a, e) => a + e.kgCo2e, 0);
+    const provenance = {
+      nBills: new Set(billEvents.map((e) => e.activity.billId)).size,
+      nLogs: events.length - billEvents.length,
+      billKg: Number(billKg.toFixed(1)),
+      billSharePct: Math.round((billKg / grossEmissionsKg) * 100),
+    };
 
-    // Scope 3: Travel (flights, trains), Food, Waste
-    const travelKg = catMap["Travel"] || 0;
-    const foodKg = catMap["Food"] || 0;
-    const wasteKg = catMap["Waste"] || 0;
-    const scope3Kg = Number((travelKg + foodKg + wasteKg + (hasElectricVehicle ? transportKg * 0.8 : 0)).toFixed(1));
-
-    const totalCalculated = Math.max(1, scope1Kg + scope2Kg + scope3Kg);
+    let cohortPercentile: number | null = null;
+    let cohortCount: number | null = null;
+    try {
+      const b = await benchmarkService.getCohortBenchmark(householdId, month);
+      if (b.cohortCount >= 3) {
+        cohortPercentile = b.percentile;
+        cohortCount = b.cohortCount;
+      }
+    } catch {
+      // no cohort for this month
+    }
 
     const monthNames = [
       "January", "February", "March", "April", "May", "June",
@@ -192,27 +261,7 @@ export class ReportService {
     ];
     const monthLabel = `${monthNames[m - 1]} ${y}`;
 
-    // Top contributors
-    const topContributors = [
-      {
-        name: "Cooling & AC Thermal Compressor",
-        category: "Electricity",
-        kgCo2e: Number((electricityKg * 0.65).toFixed(1)),
-        percentage: Math.round(((electricityKg * 0.65) / grossEmissionsKg) * 100),
-      },
-      {
-        name: "Private Commute & ICE Vehicle Mileage",
-        category: "Transport",
-        kgCo2e: Number((transportKg * 0.8).toFixed(1)),
-        percentage: Math.round(((transportKg * 0.8) / grossEmissionsKg) * 100),
-      },
-      {
-        name: "Base Appliance Baselines & Standby",
-        category: "Electricity",
-        kgCo2e: Number((electricityKg * 0.35).toFixed(1)),
-        percentage: Math.round(((electricityKg * 0.35) / grossEmissionsKg) * 100),
-      },
-    ].filter((c) => c.kgCo2e > 0);
+
 
     return {
       reportId: `REP-${household.id.toUpperCase().replace(/[^A-Z0-9]/g, "")}-${month.replace("-", "")}`,
@@ -238,34 +287,36 @@ export class ReportService {
         netEmissionsKg,
         perCapitaKg: Number((netEmissionsKg / Math.max(1, household.size)).toFixed(1)),
         carbonDensityKgM2: Number((netEmissionsKg / Math.max(1, household.floorAreaM2)).toFixed(2)),
-        carbonScore: currentSummary?.score ?? 75,
+        carbonScore: Math.round(currentSummary.score),
         priorMonthKg,
         momChangeKg,
         momTrendPct,
-        cohortPercentile: 72,
+        cohortPercentile,
+        cohortCount,
       },
+      provenance,
       scopes: {
         scope1: {
           title: "Scope 1 (Direct Emissions)",
           description: "Combustion transport, on-site fuel consumption",
-          totalKg: scope1Kg,
-          percentage: Math.round((scope1Kg / totalCalculated) * 100),
-          sources: household.vehicles.filter((v) => v.fuel !== "Electric").map((v) => `${v.name || v.type} (${v.fuel})`),
+          totalKg: Number(scope1Kg.toFixed(1)),
+          percentage: Math.round((scope1Kg / scopeTotal) * 100),
+          sources: [...scope1Src],
         },
         scope2: {
           title: "Scope 2 (Indirect Grid Electricity)",
           description: "Purchased electricity from state transmission grid",
-          totalKg: scope2Kg,
-          percentage: Math.round((scope2Kg / totalCalculated) * 100),
+          totalKg: Number(scope2Kg.toFixed(1)),
+          percentage: Math.round((scope2Kg / scopeTotal) * 100),
           gridFactorUsed: gridFactorKgKwh,
-          sources: household.appliances.map((a) => `${a.name || a.type} (${a.rating})`),
+          sources: [...scope2Src],
         },
         scope3: {
           title: "Scope 3 (Value Chain / Other)",
           description: "Commercial aviation, municipal waste, food supply chain",
-          totalKg: scope3Kg,
-          percentage: Math.round((scope3Kg / totalCalculated) * 100),
-          sources: ["Commercial Flights", "Dietary Patterns", "Municipal Waste"],
+          totalKg: Number(scope3Kg.toFixed(1)),
+          percentage: Math.round((scope3Kg / scopeTotal) * 100),
+          sources: [...scope3Src],
         },
       },
       categories: categoryEntries,
@@ -290,13 +341,19 @@ export class ReportService {
         kgSaved: r.kgSaved,
         inrSaved: r.inrSaved,
         status: r.status,
+        commitMonth: r.commitMonth,
+        realizedKg: r.realizedKg,
+        verification: r.verification,
       })),
       compliance: {
         protocol: "GHG Protocol Corporate / Residential Scope 1, 2, 3 Accounting Standard",
-        ceaVersion: "Central Electricity Authority (CEA) Baseline Database v19.0",
+        ceaVersion: "Central Electricity Authority (CEA) CO2 Baseline Database v22.0 (FY 2025-26)",
         regionalFactor: `${region} Grid: ${gridFactorKgKwh} kg CO₂e / kWh`,
-        dataQualityLevel: "Measured & Calibrated Telemetry",
-        verificationStatus: "VERIFIED",
+        dataQualityLevel:
+          provenance.nBills > 0
+            ? `${provenance.billSharePct}% from ${provenance.nBills} electricity bill${provenance.nBills > 1 ? "s" : ""}, the rest self-reported`
+            : "Self-reported activity logs",
+        verificationStatus: provenance.nBills > 0 ? "BILL_BACKED" : "SELF_REPORTED",
       },
     };
   }

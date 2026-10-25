@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
-import { z } from "zod";
+import { refreshRecommendations } from "@/server/services/recommendation.service";
+import { VehicleSchema } from "@/lib/assets";
 
-const VehicleSchema = z.object({
-  name: z.string().min(1),
-  type: z.string().default("Car"),
-  fuel: z.string().default("Petrol"),
-  kmPerUnit: z.number().positive().default(14.0),
-  monthlyKm: z.number().positive().default(300.0),
-});
 
 export async function GET(
   req: NextRequest,
@@ -48,6 +42,7 @@ export async function POST(
       },
     });
 
+    await refreshRecommendations(householdId);
     return NextResponse.json({ vehicle }, { status: 201 });
   } catch (err) {
     if (err && typeof err === "object" && "name" in err && err.name === "ZodError") {

@@ -45,10 +45,13 @@ export interface BenchmarkResult {
   };
 }
 
+export class BenchmarkUnavailable extends Error {}
+
 export class BenchmarkService {
+  /** Compares this home with every other home that has recorded data for the same month. */
   async getCohortBenchmark(
     householdId: string,
-    month: string = "2026-03",
+    month: string,
     filters?: BenchmarkFilters
   ): Promise<BenchmarkResult> {
     const targetHousehold = await db.household.findUnique({
@@ -64,7 +67,11 @@ export class BenchmarkService {
       throw new Error(`Household ${householdId} not found`);
     }
 
-    const targetEmissions = targetHousehold.monthlySummaries[0]?.totalKg ?? 250;
+    const targetSummary = targetHousehold.monthlySummaries[0];
+    if (!targetSummary || targetSummary.totalKg <= 0) {
+      throw new BenchmarkUnavailable(`No emissions recorded for ${month} yet, so there's nothing to compare.`);
+    }
+    const targetEmissions = targetSummary.totalKg;
     const targetPerCapita = Number((targetEmissions / Math.max(1, targetHousehold.size)).toFixed(1));
 
     // Fetch all active households with their current month summary
@@ -77,9 +84,9 @@ export class BenchmarkService {
       },
     });
 
-    // Apply cohort filtering if requested
-    let cohort = allHouseholds.map((h) => {
-      const em = h.monthlySummaries[0]?.totalKg ?? 200;
+    // Only homes that actually recorded data this month take part
+    let cohort = allHouseholds.filter((h) => (h.monthlySummaries[0]?.totalKg ?? 0) > 0).map((h) => {
+      const em = h.monthlySummaries[0].totalKg;
       const pc = Number((em / Math.max(1, h.size)).toFixed(1));
       return {
         id: h.id,
@@ -118,8 +125,6 @@ export class BenchmarkService {
       if (sizeFiltered.length >= 2) cohort = sizeFiltered;
     }
 
-    // Filter to households with active monthly summaries (exclude unseeded test stubs)
-    cohort = cohort.filter((h) => h.emissions >= 50);
     cohort.sort((a, b) => a.emissions - b.emissions);
 
     const leader = cohort[0];
@@ -135,20 +140,24 @@ export class BenchmarkService {
       ? Number(((cohort[midIdx - 1].perCapita + cohort[midIdx].perCapita) / 2).toFixed(1))
       : cohort[midIdx].perCapita;
 
-    // Percentile rank (lower emissions = higher percentile)
-    const rank = cohort.findIndex((h) => h.id === householdId);
-    const percentile = rank !== -1
-      ? Math.round(100 - (rank / (cohort.length - 1 || 1)) * 100)
-      : 50;
+    // Share of the cohort this home emits less than (lower emissions = higher percentile)
+    const rank = Math.max(0, cohort.findIndex((h) => h.id === householdId));
+    const percentile = cohort.length > 1 ? Math.round(100 - (rank / (cohort.length - 1)) * 100) : 50;
 
     const differenceFromMedianPct = medianTotal > 0
       ? Number((((targetEmissions - medianTotal) / medianTotal) * 100).toFixed(1))
       : 0;
 
-    const cohortList = cohort.map((c) => ({
-      ...c,
-      isCurrent: c.id === householdId,
-    }));
+    // Other homes stay anonymous: no ids or names leave the server
+    const cohortList = cohort.map((c, i) => {
+      const isCurrent = c.id === householdId;
+      return {
+        ...c,
+        id: isCurrent ? c.id : `peer-${i + 1}`,
+        name: isCurrent ? c.name : `Household #${i + 1}`,
+        isCurrent,
+      };
+    });
 
     return {
       householdId: targetHousehold.id,
@@ -161,12 +170,12 @@ export class BenchmarkService {
       percentile,
       differenceFromMedianPct,
       leader: {
-        name: leader.name,
+        name: leader.id === householdId ? leader.name : "Cleanest home",
         emissions: leader.emissions,
         perCapita: leader.perCapita,
       },
       highest: {
-        name: highest.name,
+        name: highest.id === householdId ? highest.name : "Highest home",
         emissions: highest.emissions,
         perCapita: highest.perCapita,
       },

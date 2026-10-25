@@ -6,6 +6,8 @@ export const CategoryEnum = z.enum([
   "Travel",
   "Food",
   "Waste",
+  // AC gas top-ups: a one-off, booked in the month of the refill
+  "Refrigerant",
 ]);
 export type Category = z.infer<typeof CategoryEnum>;
 
@@ -14,10 +16,13 @@ export const ActivitySourceEnum = z.enum([
   "SMART_METER",
   "RECURRING",
   "BILL_IMPORT",
+  "FUEL_PHOTO",
+  "CHECKIN", // the weekly check-in
+  "ROUTINE", // a missed week, estimated from the latest check-in
 ]);
 export type ActivitySource = z.infer<typeof ActivitySourceEnum>;
 
-export const RoleEnum = z.enum(["OWNER", "ADMIN", "MEMBER", "VIEWER"]);
+export const RoleEnum = z.enum(["OWNER", "MEMBER", "VIEWER"]); // Owner · Family · View only
 export type Role = z.infer<typeof RoleEnum>;
 
 export const CreateActivitySchema = z.object({

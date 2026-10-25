@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forecastService } from "@/server/services/forecast.service";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
+import { resolveReportingPeriod } from "@/server/period";
 
 export async function GET(
   req: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
     const { id: householdId } = await params;
     await requireMembership(req, householdId, "data:read");
 
-    const month = req.nextUrl.searchParams.get("month") || "2026-03";
+    const { month } = await resolveReportingPeriod(householdId, req.nextUrl.searchParams.get("month"));
     const result = await forecastService.getForecast(householdId, month);
 
     return NextResponse.json(result);
@@ -28,7 +29,7 @@ export async function POST(
     await requireMembership(req, householdId, "forecast:simulate");
 
     const body = await req.json();
-    const month = body.month || "2026-03";
+    const { month } = await resolveReportingPeriod(householdId, typeof body.month === "string" ? body.month : null);
 
     const result = await forecastService.getForecast(householdId, month, {
       acReductionHours: body.acReductionHours,

@@ -83,7 +83,7 @@ describe("Phase 6: Live Pipeline, Assets, Members & Onboarding", () => {
     });
     expect(initialSummary).toBeDefined();
 
-    // 2. Add an activity for 20 kWh in UP (20 * 0.82 = 16.4 kg CO2e)
+    // 2. Add an activity for 20 kWh in UP (20 * 0.675 = 13.5 kg CO2e, CEA v22)
     const payload = {
       category: "Electricity",
       type: "grid_electricity",
@@ -107,16 +107,16 @@ describe("Phase 6: Live Pipeline, Assets, Members & Onboarding", () => {
 
     const data = await res.json();
     expect(data.activity).toBeDefined();
-    expect(data.emissionEvent.kgCo2e).toBe(16.4);
+    expect(data.emissionEvent.kgCo2e).toBe(13.5);
 
     // 3. Verify total and category breakdown updated live
     const updatedSummary = await db.monthlySummary.findUnique({
       where: { householdId_month: { householdId, month: "2026-03" } },
     });
 
-    expect(updatedSummary!.totalKg).toBe(16.4);
+    expect(updatedSummary!.totalKg).toBe(13.5);
     const updatedBreakdown = JSON.parse(updatedSummary!.byCategory);
-    expect(updatedBreakdown.Electricity).toBe(16.4);
+    expect(updatedBreakdown.Electricity).toBe(13.5);
 
     // Score is live
     expect(updatedSummary!.score).toBeDefined();
