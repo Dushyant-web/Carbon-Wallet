@@ -12,7 +12,7 @@ import { PATCH as answer } from "@/app/api/admin/grievances/[id]/route";
 import { GET as adminMap } from "@/app/api/admin/carbon-map/route";
 import { GET as openDataApi } from "@/app/api/public/open-data/route";
 import { POST as login } from "@/app/api/auth/login/route";
-import { stateAverage } from "@/server/services/allowance.service";
+import { homeStatus, personAllowance } from "@/server/services/allowance.service";
 import { resetRateLimits } from "@/server/auth/rateLimit";
 import { createSession } from "@/server/auth/session";
 
@@ -168,12 +168,10 @@ describe("Phase 30: shop catalogue, complaints, open data", () => {
     expect(JSON.stringify(open)).not.toMatch(/hh_|@example\.com/);
   });
 
-  it("uses the measured state average only from 20 homes, else the labelled estimate", async () => {
-    const est = await stateAverage("BR", "2026-03");
-    expect(est.source).toBe("ESTIMATE");
-    await db.areaStat.create({ data: { level: "STATE", key: "BR", month: "2031-05", homes: 25, people: 100, kgPerPerson: 33.3, byCategory: "{}" } });
-    const measured = await stateAverage("BR", "2031-05");
-    expect(measured).toMatchObject({ source: "HOMES", perPersonKg: 33.3, homes: 25 });
-    await db.areaStat.deleteMany({ where: { month: "2031-05" } });
+  it("allows every home 100 kg per person a month", async () => {
+    expect(personAllowance()).toMatchObject({ source: "FIXED", perPersonKg: 100 });
+    expect(await homeStatus(4, 300)).toMatchObject({ allowanceKg: 400, status: "GREEN" });
+    expect((await homeStatus(4, 420)).status).toBe("AMBER");
+    expect((await homeStatus(2, 300)).status).toBe("RED");
   });
 });

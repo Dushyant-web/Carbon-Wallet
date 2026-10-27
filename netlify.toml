@@ -1,7 +1,7 @@
 # Netlify: the website (Next.js App Router + its API routes). Netlify detects Next.js and adds its runtime.
 # Environment variables are set in Site settings → Environment variables (see .env.example), never here.
 [build]
-  command = "npm run build:netlify"
+  command = "npm run build:prod"
   publish = ".next"
 
 [build.environment]

@@ -5,11 +5,12 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
-    TESSDATA_DIR=/app/tessdata
+    UV_LINK_MODE=copy
 
+# English, Hindi and orientation models come from Debian's packages: backend/tessdata/*.traineddata is
+# git-ignored, so a build from GitHub has no copy of it (app/bills/acquire.py then uses the system models)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends tesseract-ocr libgl1 libglib2.0-0 \
+ && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-hin tesseract-ocr-osd libgl1 libglib2.0-0 \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.8.17 /uv /usr/local/bin/uv
@@ -18,7 +19,6 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --extra postgres --no-install-project
 COPY app ./app
-COPY tessdata ./tessdata
 
 # never run as root
 RUN useradd --create-home --uid 10001 engine && chown -R engine /app

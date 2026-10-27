@@ -118,8 +118,7 @@ export default function AdminMapPage() {
               <p className="mt-1.5 text-[13px]">
                 <strong className="text-success-text">{c.counts.GREEN} green</strong> · <strong className="text-warning-text">{c.counts.AMBER} amber</strong> ·{" "}
                 <strong className="text-critical-text">{c.counts.RED} red</strong>
-                {c.counts.NONE ? ` · ${c.counts.NONE} without data` : ""} — against {c.average.perPersonKg} kg per person (
-                {c.average.source === "HOMES" ? `measured average of ${c.average.homes} homes in ${c.mohalla.state}` : "starting estimate"}).
+                {c.counts.NONE ? ` · ${c.counts.NONE} without data` : ""} — against the allowance of {c.average.perPersonKg} kg per person.
               </p>
             </div>
           )}

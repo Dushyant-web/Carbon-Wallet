@@ -306,8 +306,9 @@ export async function seedDatabase() {
     const hh = await db.household.findFirst({ where: { name: profile.name }, select: { id: true } });
     if (hh) await ensureHouseholdIdentity(hh.id);
   }
-  // Demo-only: a fixed, documented token so the landing page QR always opens a real record.
-  await db.household.updateMany({ where: { name: DEMO_LOGIN_HOUSEHOLD }, data: { publicToken: "sharma-demo" } });
+  // Demo-only: a fixed, documented token so the landing page QR always opens a real record, and the card code
+  // printed on the demo Carbon Card (CW1-GF7Z-8014-J97H), so that physical card scans on every fresh database.
+  await db.household.updateMany({ where: { name: DEMO_LOGIN_HOUSEHOLD }, data: { publicToken: "sharma-demo", cardCode: "CW1GF7Z8014J97H" } });
   // Schemes catalogue, demo places, mohallas and area totals; the demo shops' product catalogues
   await seedAreas();
   await seedCatalogues();

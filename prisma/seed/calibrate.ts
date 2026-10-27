@@ -140,8 +140,6 @@ export function calibrateHouseholdActivities(
       Electricity: 0,
       Transport: 0,
       Travel: 0,
-      Food: 0,
-      Waste: 0,
     };
 
     for (const act of monthActs) {
@@ -177,8 +175,6 @@ export function calibrateHouseholdActivities(
       Electricity: 0,
       Transport: 0,
       Travel: 0,
-      Food: 0,
-      Waste: 0,
     };
 
     for (const act of monthActs) {

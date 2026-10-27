@@ -4,7 +4,7 @@ import { stateCode } from "@/lib/carbonId";
 import { stateAveragePerPerson, stateInfo, statusFor, type CarbonStatus } from "@/lib/allowance";
 import { INDIA_INVENTORY, OFFICIAL, monthlyKg } from "@/lib/officialData";
 import { minHomes } from "./mohalla.service";
-import { stateAverage } from "./allowance.service";
+import { personAllowance } from "./allowance.service";
 
 /*
  * The admin's carbon map. Admins can already read any home, so here each home appears as its own small hexagon
@@ -91,7 +91,7 @@ export async function adminMohallaCells(mohallaId: string, month: string | null)
     ? await db.monthlySummary.findMany({ where: { householdId: { in: locs.map((l) => l.householdId) }, month }, select: { householdId: true, totalKg: true } })
     : [];
   const byHome = new Map(sums.map((s) => [s.householdId, s.totalKg]));
-  const avg = await stateAverage(m.state, month);
+  const avg = personAllowance();
   const counts: Record<CarbonStatus | "NONE", number> = { GREEN: 0, AMBER: 0, RED: 0, NONE: 0 };
   const cells = locs.map((l) => {
     const kg = byHome.get(l.householdId);

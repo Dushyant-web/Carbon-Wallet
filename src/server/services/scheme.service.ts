@@ -230,9 +230,9 @@ export async function markApplied(householdId: string, slug: string) {
 }
 
 const COUNTER_SENTENCE: Record<CarbonStatus, string> = {
-  GREEN: "This home is below its state's average. Any efficient model keeps it there.",
-  AMBER: "This home is close to its state's average. Suggest the most efficient model: 5-star, inverter or electric.",
-  RED: "This home is above its state's average. Suggest a 5-star inverter or electric model, and the benefits below.",
+  GREEN: "This home is within its allowance (100 kg a person). Any efficient model keeps it there.",
+  AMBER: "This home is close to its allowance (100 kg a person). Suggest the most efficient model: 5-star, inverter or electric.",
+  RED: "This home is over its allowance (100 kg a person). Suggest a 5-star inverter or electric model, and the benefits below.",
 };
 
 /**
@@ -245,7 +245,7 @@ export async function counterAdvice(householdId: string, sells: string) {
     contextFor(householdId),
     db.monthlySummary.findFirst({ where: { householdId, totalKg: { gt: 0 } }, orderBy: { month: "desc" }, select: { totalKg: true, month: true } }),
   ]);
-  const status = latest ? (await homeStatus(household.state, household.size, latest.totalKg, latest.month)).status : null;
+  const status = latest ? (await homeStatus(household.size, latest.totalKg)).status : null;
   const slugs = [
     ...(sells === "VEHICLES" ? [] : COUNTER_SCHEMES.APPLIANCES),
     ...(sells === "APPLIANCES" ? [] : COUNTER_SCHEMES.VEHICLES),

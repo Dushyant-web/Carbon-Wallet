@@ -53,11 +53,12 @@ export async function requireMembership(
     throw new AuthError("Unauthenticated: please log in", 401);
   }
 
-  const membership = await db.membership.findUnique({
-    where: { householdId_userId: { householdId, userId } },
-  });
+  // both lookups at once: every household API call starts here, and each database round trip counts
+  const [membership, target] = await Promise.all([
+    db.membership.findUnique({ where: { householdId_userId: { householdId, userId } } }),
+    db.household.findUnique({ where: { id: householdId }, select: { status: true } }),
+  ]);
   // a household being deleted is gone for everyone, admins included (privacy.service.ts)
-  const target = await db.household.findUnique({ where: { id: householdId }, select: { status: true } });
   if (target?.status === "DELETION_PENDING") throw new AuthError("Household not found", 404);
 
   let realRole: Role;
@@ -65,8 +66,7 @@ export async function requireMembership(
     realRole = membership.role as Role;
   } else if (sessionUser?.platformRole === "ADMIN") {
     // Platform admins can look at any household for support, but only read: never change its data
-    const exists = await db.household.findUnique({ where: { id: householdId }, select: { id: true } });
-    if (!exists) throw new AuthError("Household not found", 404);
+    if (!target) throw new AuthError("Household not found", 404);
     realRole = "VIEWER";
   } else {
     throw new AuthError("Forbidden: You are not an active member of this household", 403);

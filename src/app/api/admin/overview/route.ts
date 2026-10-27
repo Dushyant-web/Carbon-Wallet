@@ -5,6 +5,9 @@ import { requireAdmin, handleAuthError } from "@/server/auth/guard";
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
+    // ?users=N sends only the N newest accounts (the Android admin app); the stats still count everyone
+    const usersParam = req.nextUrl.searchParams.get("users");
+    const usersLimit = usersParam !== null && /^\d{1,5}$/.test(usersParam) ? Number(usersParam) : undefined;
     const [users, households, activities, recentAudit] = await Promise.all([
       db.user.findMany({
         orderBy: { createdAt: "desc" },
@@ -54,7 +57,7 @@ export async function GET(req: NextRequest) {
         households,
         activities,
       },
-      users: users.map(({ passwordHash, _count, ...u }) => ({
+      users: users.slice(0, usersLimit).map(({ passwordHash, _count, ...u }) => ({
         ...u,
         canLogIn: Boolean(passwordHash),
         households: _count.memberships,

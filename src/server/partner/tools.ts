@@ -49,7 +49,7 @@ function householdTools(householdId: string, userId: string) {
         if (!h) return "Home not found.";
         const months = await db.monthlySummary.findMany({ where: { householdId }, orderBy: { month: "desc" }, take: 3, select: { month: true, totalKg: true, byCategory: true, score: true } });
         const latest = months[0];
-        const status = latest ? await homeStatus(h.state, h.size, latest.totalKg, latest.month) : null;
+        const status = latest ? await homeStatus(h.size, latest.totalKg) : null;
         return out({
           name: h.name,
           city: h.city,
@@ -60,7 +60,7 @@ function householdTools(householdId: string, userId: string) {
           members: h.memberships.length,
           yourRole: h.memberships.find((m) => m.userId === userId)?.role,
           months: months.map((m) => ({ month: m.month, kgCO2: Math.round(m.totalKg), score: Math.round(m.score), byCategory: JSON.parse(m.byCategory || "{}") })),
-          status: status && { allowanceKg: status.allowanceKg, usedShare: status.ratio, status: status.status, allowanceBasis: status.average.source === "HOMES" ? `measured average of ${status.average.homes} homes in the state` : "official estimate (fewer than 20 homes in the state so far)" },
+          status: status && { allowanceKg: status.allowanceKg, usedShare: status.ratio, status: status.status, allowanceBasis: "100 kg CO₂e per person a month × the people in the home" },
         });
       },
     }),

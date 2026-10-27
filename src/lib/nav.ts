@@ -7,6 +7,7 @@ import {
   LifeBuoy,
   CreditCard,
   FileText,
+  Flame,
   Home,
   Landmark,
   ListChecks,
@@ -52,6 +53,7 @@ export const MAIN_NAV: NavItem[] = [
 ];
 
 export const MORE_NAV: NavItem[] = [
+  { href: "/heatmap", en: "Heat map", hi: "हीट मैप", hint: "Carbon per person, area by area", icon: Flame },
   { href: "/insights", en: "What caused it", hi: "कारण", hint: "What raised or lowered your carbon", icon: Sparkles },
   { href: "/actions", en: "Ways to save", hi: "बचत के तरीके", hint: "Biggest savings for your home", icon: Target },
   { href: "/reports", en: "Monthly report", hi: "मासिक रिपोर्ट", hint: "One page, in plain words", icon: BarChart3 },

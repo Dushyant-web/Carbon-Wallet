@@ -29,6 +29,7 @@ npm test                                     # 167 tests, on their own prisma/te
 
 For demos run production mode: `npm run build && npm start`. Demo logins and passwords: [ACCOUNTS.md](ACCOUNTS.md).
 Hosting (Netlify + Render + Supabase), Google sign-in and scheduled jobs: [DEPLOY.md](DEPLOY.md). Product plan: [PLAN-V2.md](PLAN-V2.md).
+Native Android apps (Ghar for homes, Dukaan for shops, Admin): [android/README.md](android/README.md).
 
 ## What it does
 

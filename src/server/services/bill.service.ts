@@ -341,7 +341,11 @@ export const billService = {
   /** Fits AC kW + baseload from the household's real bills (engine regression). Best-effort. */
   async recalibrate(householdId: string) {
     const bills = await db.bill.findMany({ where: { householdId }, orderBy: { periodStart: "asc" } });
-    if (bills.length === 0) return null;
+    if (bills.length === 0) {
+      // nothing left to measure from: an old calibration would keep quoting bills that are gone
+      await db.calibration.deleteMany({ where: { householdId } });
+      return null;
+    }
     try {
       const out = await engineCalibrate(
         bills.map((b) => {

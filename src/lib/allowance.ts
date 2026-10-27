@@ -2,9 +2,13 @@ import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
 import { stateCode } from "@/lib/carbonId";
 
 /**
- * A home's monthly carbon allowance: people × the state's average per person, for what we track
- * (home electricity, cooking gas, private vehicles). Green ≤ 90 %, amber ≤ 110 %, red above.
- *
+ * A home's monthly carbon allowance: 100 kg CO₂e per person × the people in the home.
+ * Green ≤ 90 % of it, amber ≤ 110 %, red above. It is a yardstick, not a legal limit.
+ */
+export const ALLOWANCE_PER_PERSON_KG = 100;
+
+/**
+ * State averages per person (no longer the allowance; kept for comparisons and the open data).
  * STARTING ESTIMATES, to be replaced by the admin-maintained table (PLAN-V2 §7):
  * - electricity: household (domestic) kWh per person per year ≈ state domestic sales ÷ population, rounded;
  *   all-sector per-capita figures (RBI HSIS Table 138) are 3–5× higher and are NOT used;
@@ -16,8 +20,7 @@ import { stateCode } from "@/lib/carbonId";
 export const GRID_KG_PER_KWH = GRID_KG_CO2E_PER_KWH;
 export const COOKING_KG_PER_PERSON_MONTH = 4.5;
 export const TRANSPORT_KG_PER_PERSON_MONTH = 8;
-export const ALLOWANCE_SOURCE =
-  "Starting estimate: state household electricity per person (domestic sales ÷ population) × CEA grid factor, plus national averages for cooking gas and private vehicles.";
+export const ALLOWANCE_SOURCE = "Every person in a home is allowed 100 kg CO₂e a month, so a home's allowance is 100 kg × its people.";
 
 /** Household electricity, kWh per person per year (estimate). */
 const DOMESTIC_KWH_PER_PERSON: Record<string, { name: string; nameHi: string; kwh: number }> = {
@@ -70,8 +73,9 @@ export function stateAveragePerPerson(state: string) {
   };
 }
 
+/** The same in every state; callers still pass the state. */
 export function monthlyAllowance(state: string, people: number) {
-  return Math.round(stateAveragePerPerson(state).total * Math.max(1, people));
+  return Math.round(ALLOWANCE_PER_PERSON_KG * Math.max(1, people));
 }
 
 export function statusFor(usedKg: number, allowanceKg: number): CarbonStatus {
@@ -86,9 +90,9 @@ export function carbonStatus(state: string, people: number, usedKg: number) {
 }
 
 export const STATUS_WORDS: Record<CarbonStatus, { en: string; hi: string; tone: string }> = {
-  GREEN: { en: "Green · below your state's average", hi: "हरा · राज्य के औसत से कम", tone: "success" },
-  AMBER: { en: "Amber · close to your state's average", hi: "पीला · राज्य के औसत के पास", tone: "warning" },
-  RED: { en: "Red · above your state's average", hi: "लाल · राज्य के औसत से ज़्यादा", tone: "critical" },
+  GREEN: { en: "Green · within your allowance", hi: "हरा · आपकी सीमा के अंदर", tone: "success" },
+  AMBER: { en: "Amber · close to your allowance", hi: "पीला · आपकी सीमा के पास", tone: "warning" },
+  RED: { en: "Red · over your allowance", hi: "लाल · आपकी सीमा से ज़्यादा", tone: "critical" },
 };
 
 /** Everyday comparisons so a kg number means something */

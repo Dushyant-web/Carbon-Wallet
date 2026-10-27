@@ -7,6 +7,7 @@ import { summaryRepository } from "@/server/repositories/summary.repository";
 import { scoreService } from "@/server/services/score.service";
 import { seedEmissionFactors, stateToRegion } from "@/server/factors/registry";
 import { CreateActivityInput } from "@/types";
+import { countedCategory } from "@/server/counted";
 
 export interface CalculateResult {
   effectiveQuantity: number;
@@ -235,21 +236,20 @@ export class EmissionService {
       tx
     );
 
-    // Sum by category
+    // Sum by category (food and waste are not counted: src/server/counted.ts)
     const byCategory: Record<string, number> = {
       Electricity: 0,
       Transport: 0,
       Travel: 0,
-      Food: 0,
-      Waste: 0,
     };
 
     let totalKg = 0;
-    // and by gas: each event split by what its factor is made of (CO₂, CH₄, N₂O, HFCs; food and travel as CO₂e)
+    // and by gas: each event split by what its factor is made of (CO₂, CH₄, N₂O, HFCs; travel as CO₂e)
     const byGas = emptyGases();
 
     for (const ev of events) {
-      const cat = ev.activity.category;
+      const cat = countedCategory(ev.activity.category, ev.factor.type);
+      if (!cat) continue;
       byCategory[cat] = Number(((byCategory[cat] || 0) + ev.kgCo2e).toFixed(2));
       totalKg = Number((totalKg + ev.kgCo2e).toFixed(2));
       addGases(byGas, splitByGas(ev.factor.type, ev.kgCo2e));

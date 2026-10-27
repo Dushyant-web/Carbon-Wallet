@@ -128,3 +128,18 @@ first). Pages then answer in 3–35 ms.
 - `npm audit --omit=dev`: as of 26 Oct 2026 the remaining advisories are build-time (Prisma's config loader)
   and zod 3 (fixed only in zod 4, a breaking upgrade worth doing before launch).
 - Run CI (`.github/workflows/ci.yml`): type check, lint, Vitest, pytest, Postgres schema check.
+
+## 8. Food and waste removed
+
+Food and waste no longer count towards a home's carbon, and LPG now sits under "Cooking". New months are already
+worked out this way; months saved before the change still carry the old food and waste numbers. Run this once
+against Supabase after deploying (it takes seconds, and running it again changes nothing):
+
+```sh
+npx prisma generate --schema prisma/postgres/schema.prisma
+(set -a; . ./.env.supabase; set +a; DATABASE_URL="$DIRECT_URL" npx tsx scripts/drop-food-waste.ts)
+npx prisma generate   # back to the local SQLite client
+```
+
+It takes food and waste out of each stored month's total and categories, then recomputes the mohalla, city,
+state and India totals. On this laptop the same thing is `npm run db:drop-food-waste`.

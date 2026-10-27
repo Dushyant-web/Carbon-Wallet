@@ -85,7 +85,7 @@ export function toActivity(q: QuickLog): ActivityPayload | null {
     case "lpg": {
       if (!(q.cylinders > 0) || !(q.cylinderKg > 0)) return null;
       const kg = Number((q.cylinders * q.cylinderKg).toFixed(2));
-      return { category: "Food", type: "lpg_cooking", quantity: kg, unit: "kg", notes: `${fmt(q.cylinders)} × ${fmt(q.cylinderKg)} kg LPG cylinder` };
+      return { category: "Cooking", type: "lpg_cooking", quantity: kg, unit: "kg", notes: `${fmt(q.cylinders)} × ${fmt(q.cylinderKg)} kg LPG cylinder` };
     }
     case "ac_gas": {
       const gas = REFRIGERANTS.find((r) => r.id === q.gas);

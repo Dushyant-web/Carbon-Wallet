@@ -156,31 +156,7 @@ export function generateRawActivities(
       });
     }
 
-    // 4. FOOD & DIET
-    const basketsCount = Number((profile.size * 1.5 * (0.9 + prng() * 0.2)).toFixed(1));
-    activities.push({
-      householdId: profile.id,
-      category: "Food",
-      type: "grocery_basket",
-      quantity: basketsCount,
-      unit: "basket",
-      occurredOn: new Date(Date.UTC(date.getUTCFullYear(), monthNum - 1, 15, 12, 0, 0)),
-      source: "RECURRING",
-      notes: "Bi-weekly household dietary consumption basket",
-    });
-
-    // 5. WASTE
-    const wasteKg = Number((profile.size * 12 * (0.9 + prng() * 0.2)).toFixed(1));
-    activities.push({
-      householdId: profile.id,
-      category: "Waste",
-      type: "solid_waste_unsegregated",
-      quantity: wasteKg,
-      unit: "kg",
-      occurredOn: new Date(Date.UTC(date.getUTCFullYear(), monthNum - 1, 27, 8, 0, 0)),
-      source: "RECURRING",
-      notes: "Municipal solid waste collection",
-    });
+    // Food and waste are not part of a home's carbon here (src/server/counted.ts), so none are generated
   }
 
   return activities;

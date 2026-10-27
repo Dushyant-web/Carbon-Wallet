@@ -90,9 +90,9 @@ describe("Phase 27: schemes, removal requests, mohalla", () => {
     await db.user.deleteMany({ where: { email: { endsWith: `.${stamp}@p27.test` } } });
   });
 
-  it("works out the state-average allowance and the colour", () => {
-    expect(monthlyAllowance("UP", 4)).toBeGreaterThan(80);
-    expect(monthlyAllowance("DL", 4)).toBeGreaterThan(monthlyAllowance("BR", 4));
+  it("works out the 100 kg-per-person allowance and the colour", () => {
+    expect(monthlyAllowance("UP", 4)).toBe(400);
+    expect(monthlyAllowance("DL", 4)).toBe(monthlyAllowance("BR", 4));
     const a = monthlyAllowance("UP", 4);
     expect(carbonStatus("UP", 4, a * 0.8).status).toBe("GREEN");
     expect(carbonStatus("UP", 4, a).status).toBe("AMBER");

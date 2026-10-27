@@ -82,7 +82,7 @@ describe("Phase 5: Overview Spec & Cohort Benchmarking", () => {
     const data = await res.json();
 
     expect(data.kpi.totalEmissions).toBe(132);
-    expect(data.kpi.topContributor.category).toBe("Food");
+    expect(data.kpi.topContributor.category).toBe("Electricity");
   });
 
   it("verifies Cohort Benchmark endpoint returns median, percentiles and leader metadata", async () => {
