@@ -4,6 +4,9 @@ export const CategoryEnum = z.enum([
   "Electricity",
   "Transport",
   "Travel",
+  // cooking gas (LPG)
+  "Cooking",
+  // no longer counted (src/server/counted.ts); kept so old logs still read
   "Food",
   "Waste",
   // AC gas top-ups: a one-off, booked in the month of the refill
@@ -36,7 +39,9 @@ export const CreateActivitySchema = z.object({
   notes: z.string().optional(),
   // Optional appliance / power specs for duration-based logging (e.g. AC for 6 hours at 1.5 kW)
   powerKw: z.number().positive().optional(),
-});
+})
+  // cooking gas is its own category now; older clients still send it under "Food"
+  .transform((a) => (a.type === "lpg_cooking" ? { ...a, category: "Cooking" as const } : a));
 export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
 
 export const EmissionFactorSchema = z.object({

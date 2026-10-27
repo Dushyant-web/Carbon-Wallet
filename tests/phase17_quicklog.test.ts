@@ -34,7 +34,7 @@ describe("Phase 17: quick log", () => {
   });
 
   it("turns everyday answers into activities", () => {
-    expect(toActivity({ kind: "lpg", cylinders: 2, cylinderKg: 14.2 })).toMatchObject({ category: "Food", type: "lpg_cooking", quantity: 28.4, unit: "kg" });
+    expect(toActivity({ kind: "lpg", cylinders: 2, cylinderKg: 14.2 })).toMatchObject({ category: "Cooking", type: "lpg_cooking", quantity: 28.4, unit: "kg" });
     expect(toActivity({ kind: "ac_gas", gas: "R32", kg: 0.8 })).toMatchObject({ category: "Refrigerant", type: "refrigerant_r32", quantity: 0.8 });
     expect(toActivity({ kind: "ac_gas", gas: "R32", kg: 12 })).toBeNull(); // no home AC holds that much
     expect(toActivity({ kind: "transit", mode: "bus", km: 12 })).toMatchObject({ category: "Travel", type: "city_bus", quantity: 12 });

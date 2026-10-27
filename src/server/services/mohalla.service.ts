@@ -6,6 +6,7 @@ import { GRID_KG_PER_KWH, stateInfo, statusFor } from "@/lib/allowance";
 import { monthlyKg, officialFor } from "@/lib/officialData";
 import { heatLevel, weatherFor, type Weather } from "./weather.service";
 import { resolveReportingPeriod } from "@/server/period";
+import { personAllowance } from "./allowance.service";
 
 /*
  * Mohalla → city → state → India.
@@ -325,12 +326,10 @@ export async function mohallaFacts(mohallaId: string, month: string): Promise<Mo
     db.schemeHelp.findMany({ where: { householdId: { in: ids }, merchantId: { not: null } }, select: { householdId: true, status: true } }),
   ]);
   const byId = new Map(homes.map((x) => [x.householdId, x.household]));
-  const { stateAverage } = await import("./allowance.service"); // allowance.service reads minHomes from here
-  const averages = new Map<string, number>();
-  for (const st of new Set(homes.map((x) => x.household.state))) averages.set(st, (await stateAverage(st, month)).perPersonKg);
+  const perPerson = personAllowance().perPersonKg;
   const green = sums.filter((s) => {
     const hh = byId.get(s.householdId)!;
-    return statusFor(s.totalKg, averages.get(hh.state)! * Math.max(1, hh.size)) === "GREEN";
+    return statusFor(s.totalKg, perPerson * Math.max(1, hh.size)) === "GREEN";
   }).length;
   const efficient = sales.filter((x) => (x.appliance && /5_STAR|INVERTER/.test(x.appliance.rating) && x.appliance.rating !== "NON_INVERTER") || x.vehicle?.fuel === "Electric").length;
   return {
@@ -426,8 +425,8 @@ export function buildFeed({
     feed.push({
       kind: "GREEN",
       title: { en: `${facts.green} of ${facts.homesWithData} homes are green`, hi: `${facts.homesWithData} में से ${facts.green} घर हरे` },
-      en: `${pct}% of homes here stayed below their state's average for a home of their size this month.`,
-      hi: `इस महीने यहाँ के ${pct}% घर अपने आकार के घर के राज्य औसत से नीचे रहे।`,
+      en: `${pct}% of homes here stayed within their allowance (100 kg a person) this month.`,
+      hi: `इस महीने यहाँ के ${pct}% घर अपनी सीमा (100 किलो प्रति व्यक्ति) के अंदर रहे।`,
       source: "Carbon Wallet, counted across the mohalla (never one home)",
     });
   }

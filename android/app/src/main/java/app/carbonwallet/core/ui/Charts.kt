@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,7 +58,7 @@ data class Column1(val label: String, val value: Double, val highlight: Boolean 
 fun ColumnChart(
     bars: List<Column1>,
     modifier: Modifier = Modifier,
-    height: Dp = 160.dp,
+    height: Dp = 120.dp,
     color: Color = Cw.inkLight,
     highlightColor: Color = Cw.terracotta,
     valueText: (Double) -> String = { kgNumber(it) },
@@ -86,6 +87,7 @@ fun ColumnChart(
                 Spacer(Modifier.height(3.dp))
                 Box(
                     Modifier
+                        .widthIn(max = 48.dp)
                         .fillMaxWidth(0.72f)
                         .weight(fraction.coerceAtLeast(0.001f), fill = true)
                         .background(
@@ -110,17 +112,18 @@ fun BarRows(rows: List<BarRowData>, modifier: Modifier = Modifier, max: Double? 
     if (rows.isEmpty()) return
     val top = (max ?: rows.maxOf { it.value }).coerceAtLeast(0.0001)
     val grow = rememberGrow(rows)
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         rows.forEach { row ->
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(9.dp).background(row.color, RoundedCornerShape(1.dp)))
                     Spacer(Modifier.width(8.dp))
                     Text(row.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (row.sub != null) Text(row.sub, style = MaterialTheme.typography.labelSmall, color = Cw.inkMuted, modifier = Modifier.padding(horizontal = 8.dp))
                     Text(row.valueText, style = MaterialTheme.typography.titleSmall)
                 }
-                Spacer(Modifier.height(5.dp))
-                Box(Modifier.fillMaxWidth().height(8.dp).background(Cw.subtle, RoundedCornerShape(1.dp))) {
+                Spacer(Modifier.height(4.dp))
+                Box(Modifier.fillMaxWidth().height(6.dp).background(Cw.subtle, RoundedCornerShape(1.dp))) {
                     Box(
                         Modifier
                             .fillMaxWidth((row.value / top).toFloat().coerceIn(0f, 1f) * grow.value)
@@ -128,7 +131,6 @@ fun BarRows(rows: List<BarRowData>, modifier: Modifier = Modifier, max: Double? 
                             .background(row.color, RoundedCornerShape(1.dp)),
                     )
                 }
-                if (row.sub != null) Text(row.sub, style = MaterialTheme.typography.bodySmall, color = Cw.inkMuted, modifier = Modifier.padding(top = 3.dp))
             }
         }
     }

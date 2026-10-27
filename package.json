@@ -27,7 +27,8 @@
     "demo": "NEXT_DIST_DIR=.next-prod next build && NEXT_DIST_DIR=.next-prod next start",
     "demo:start": "NEXT_DIST_DIR=.next-prod next start",
     "seed:mohallas": "tsx --env-file=.env prisma/seed/realMohallas.ts",
-    "db:ghg-backfill": "tsx --env-file=.env scripts/ghg-backfill.ts"
+    "db:ghg-backfill": "tsx --env-file=.env scripts/ghg-backfill.ts",
+    "db:drop-food-waste": "tsx --env-file-if-exists=.env scripts/drop-food-waste.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

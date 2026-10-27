@@ -44,7 +44,7 @@ export interface HouseholdProfile {
   targetMonthlyKg: number; // Target for current month (2026-03)
   intendedTrendPct: number; // vs prior month (2026-02) e.g. -8.4%
   solarKwh: number;
-  primaryCategory: "Electricity" | "Transport" | "Travel" | "Food";
+  primaryCategory: "Electricity" | "Transport" | "Travel";
   primarySharePct: number;
   members: MemberProfile[];
   appliances: ApplianceProfile[];
@@ -123,7 +123,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     intendedTrendPct: -0.9,
     solarKwh: 0,
     primaryCategory: "Transport",
-    primarySharePct: 46.2, // ~158 kg
+    primarySharePct: 55.0, // ~188 kg
     members: [
       { name: "Virendra Mehta", email: "virendra.mehta@example.com", role: "OWNER" },
       { name: "Sunita Mehta", email: "sunita.mehta@example.com", role: "MEMBER" },
@@ -253,7 +253,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     intendedTrendPct: -1.1,
     solarKwh: 0,
     primaryCategory: "Electricity",
-    primarySharePct: 47.9, // ~130 kg
+    primarySharePct: 55.0, // ~149 kg
     members: [
       { name: "Harpreet Singh", email: "harpreet.singh@example.com", role: "OWNER" },
       { name: "Gurpreet Singh", email: "gurpreet.singh@example.com", role: "MEMBER" },
@@ -298,7 +298,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     intendedTrendPct: -1.7,
     solarKwh: 380, // Solar offset!
     primaryCategory: "Electricity",
-    primarySharePct: 39.8, // ~70 kg net
+    primarySharePct: 55.0, // ~97 kg net
     members: [
       { name: "Manish Gupta", email: "manish.gupta@example.com", role: "OWNER" },
       { name: "Ritu Gupta", email: "ritu.gupta@example.com", role: "MEMBER" },
@@ -342,7 +342,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     intendedTrendPct: -1.3,
     solarKwh: 120,
     primaryCategory: "Electricity",
-    primarySharePct: 43.2, // ~64 kg
+    primarySharePct: 55.0, // ~81 kg
     members: [
       { name: "Tariq Khan", email: "tariq.khan@example.com", role: "OWNER" },
       { name: "Ayesha Khan", email: "ayesha.khan@example.com", role: "MEMBER" },
@@ -384,8 +384,8 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     targetMonthlyKg: 132.0,
     intendedTrendPct: -0.8,
     solarKwh: 0,
-    primaryCategory: "Food",
-    primarySharePct: 40.9, // ~54 kg
+    primaryCategory: "Electricity",
+    primarySharePct: 55.0, // ~73 kg
     members: [
       { name: "Hitesh Patel", email: "hitesh.patel@example.com", role: "OWNER" },
       { name: "Geeta Patel", email: "geeta.patel@example.com", role: "MEMBER" },
@@ -401,11 +401,11 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     ],
     recommendations: [
       {
-        action: "Community Compost & Food Waste Diverter",
-        description: "Food basket comprises largest portion. Zero-waste composter reduces methane decomposition footprint.",
-        category: "Food",
-        kgSaved: 9.6,
-        inrSaved: 0,
+        action: "Set the fridge to 4 °C, not the coldest setting",
+        description: "The fridge runs all day, so a slightly warmer setting saves units every hour without spoiling food.",
+        category: "Electricity",
+        kgSaved: 4.1,
+        inrSaved: 42,
         difficulty: "EASY",
         status: "COMPLETED",
       },
@@ -472,7 +472,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
     intendedTrendPct: -1.3,
     solarKwh: 0,
     primaryCategory: "Travel",
-    primarySharePct: 43.6, // ~100 kg
+    primarySharePct: 55.0, // ~126 kg
     members: [
       { name: "Anirban Roy", email: "anirban.roy@example.com", role: "OWNER" },
       { name: "Debashree Roy", email: "debashree.roy@example.com", role: "MEMBER" },

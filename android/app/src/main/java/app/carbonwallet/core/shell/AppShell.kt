@@ -165,11 +165,11 @@ private fun PageFrame(page: Page, nav: Nav) {
                 .fillMaxWidth()
                 .background(Cw.card)
                 .clickable { nav.pop() }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-                .height(48.dp),
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+                .height(42.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Lucide.Back, t("Back", "वापस"), tint = Cw.ink, modifier = Modifier.padding(8.dp).size(22.dp))
+            Icon(Lucide.Back, t("Back", "वापस"), tint = Cw.ink, modifier = Modifier.padding(8.dp).size(20.dp))
             Text(UiPrefs.lang.pick(page.en, page.hi), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(Cw.border))
@@ -181,7 +181,7 @@ private fun PageFrame(page: Page, nav: Nav) {
 private fun BottomBar(flavor: FlavorSpec, selected: Int, onSelect: (Int) -> Unit) {
     Column(Modifier.fillMaxWidth().background(Cw.card).windowInsetsPadding(WindowInsets.navigationBars)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Cw.border))
-        Row(Modifier.fillMaxWidth().height(66.dp)) {
+        Row(Modifier.fillMaxWidth().height(56.dp)) {
             flavor.tabs.forEachIndexed { i, tab ->
                 val on = i == selected
                 Column(
@@ -196,13 +196,13 @@ private fun BottomBar(flavor: FlavorSpec, selected: Int, onSelect: (Int) -> Unit
                 ) {
                     // the active tab gets a saffron rule on top, like the portal menu
                     Box(Modifier.fillMaxWidth(0.6f).height(3.dp).background(if (on) Cw.saffron else Color.Transparent))
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(6.dp))
                     Box(
-                        Modifier.background(if (on) Cw.govSky else Color.Transparent, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 3.dp),
+                        Modifier.background(if (on) Cw.govSky else Color.Transparent, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 2.dp),
                     ) {
-                        Icon(tab.icon, null, tint = if (on) Cw.govNavy else Cw.inkMuted, modifier = Modifier.size(21.dp))
+                        Icon(tab.icon, null, tint = if (on) Cw.govNavy else Cw.inkMuted, modifier = Modifier.size(19.dp))
                     }
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         t(tab.en, tab.hi),
                         style = MaterialTheme.typography.labelSmall,

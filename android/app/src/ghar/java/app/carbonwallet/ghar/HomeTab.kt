@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.carbonwallet.core.model.PortalUpdates
 import app.carbonwallet.core.net.Session
@@ -32,12 +33,10 @@ import app.carbonwallet.core.ui.Column1
 import app.carbonwallet.core.ui.ColumnChart
 import app.carbonwallet.core.ui.CwCard
 import app.carbonwallet.core.ui.Eyebrow
-import app.carbonwallet.core.ui.KpiTile
 import app.carbonwallet.core.ui.Lucide
 import app.carbonwallet.core.ui.RemoteList
 import app.carbonwallet.core.ui.StatusPill
 import app.carbonwallet.core.ui.Tag
-import app.carbonwallet.core.ui.TileRow
 import app.carbonwallet.core.ui.Ticker
 import app.carbonwallet.core.ui.Tone
 import app.carbonwallet.core.ui.kg
@@ -60,9 +59,9 @@ fun statusFor(usedKg: Double, allowanceKg: Double): Tone {
 
 @Composable
 fun statusWords(tone: Tone) = when (tone) {
-    Tone.GOOD -> t("Green · below your state's average", "हरा · राज्य के औसत से कम")
-    Tone.WARN -> t("Amber · close to your state's average", "पीला · राज्य के औसत के पास")
-    else -> t("Red · above your state's average", "लाल · राज्य के औसत से ज़्यादा")
+    Tone.GOOD -> t("Green · within your allowance", "हरा · आपकी सीमा के अंदर")
+    Tone.WARN -> t("Amber · close to your allowance", "पीला · आपकी सीमा के पास")
+    else -> t("Red · over your allowance", "लाल · आपकी सीमा से ज़्यादा")
 }
 
 @Composable
@@ -70,8 +69,6 @@ fun categoryName(category: String) = when (category.lowercase()) {
     "electricity" -> t("Electricity", "बिजली")
     "transport" -> t("Transport", "गाड़ी")
     "travel" -> t("Travel", "यात्रा")
-    "food" -> t("Food", "खाना")
-    "waste" -> t("Waste", "कचरा")
     "cooking" -> t("Cooking gas", "रसोई गैस")
     else -> category
 }
@@ -136,7 +133,7 @@ fun HomeTab(nav: Nav) = WithHome { home ->
                     Text(a.action, style = MaterialTheme.typography.titleLarge)
                     if (a.description.isNotBlank()) {
                         Spacer(Modifier.height(4.dp))
-                        Text(a.description, style = MaterialTheme.typography.bodyMedium, color = Cw.inkMuted)
+                        Text(a.description, style = MaterialTheme.typography.bodyMedium, color = Cw.inkMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -180,61 +177,12 @@ fun HomeTab(nav: Nav) = WithHome { home ->
             }
         }
 
-        if (kpi != null) {
-            item(key = "tiles") {
-                Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TileRow {
-                        KpiTile(
-                            t("Score", "स्कोर"),
-                            kpi.score?.toString() ?: "—",
-                            Modifier.weight(1f),
-                            sub = kpi.scoreBand?.let { band(it) },
-                            icon = Lucide.Gauge,
-                        )
-                        KpiTile(
-                            t("Can save", "बचत संभव"),
-                            kpi.actionableSavingsInr?.let { rupees(it) } ?: "—",
-                            Modifier.weight(1f),
-                            sub = kpi.actionableSavingsKg?.let { t("${kg(it)} a month", "${kg(it)} हर महीने") },
-                            icon = Lucide.Rupee,
-                            accent = Cw.moss,
-                        )
-                    }
-                    kpi.peer?.let { p ->
-                        if (p.medianKg != null && p.differenceFromMedianPct != null) {
-                            val more = p.differenceFromMedianPct > 0
-                            CwCard {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Lucide.Users, null, tint = Cw.inkMuted, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(
-                                        if (more) {
-                                            t(
-                                                "${pct(p.differenceFromMedianPct)} more than a typical home (${kg(p.medianKg)}), out of ${p.cohortCount ?: 0} homes like yours.",
-                                                "आपके जैसे ${p.cohortCount ?: 0} घरों के आम घर (${kg(p.medianKg)}) से ${pct(p.differenceFromMedianPct)} ज़्यादा।",
-                                            )
-                                        } else {
-                                            t(
-                                                "${pct(p.differenceFromMedianPct)} less than a typical home (${kg(p.medianKg)}), out of ${p.cohortCount ?: 0} homes like yours.",
-                                                "आपके जैसे ${p.cohortCount ?: 0} घरों के आम घर (${kg(p.medianKg)}) से ${pct(p.differenceFromMedianPct)} कम।",
-                                            )
-                                        },
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         allowance?.let { a ->
             item(key = "howcalc") {
                 Text(
                     t(
-                        "Allowance: ${o.household?.size ?: 1} people × ${kgNumber(a.perPersonKg)} kg, your state's average per person. A yardstick, not a legal limit.",
-                        "सीमा: ${o.household?.size ?: 1} लोग × ${kgNumber(a.perPersonKg)} किलो, आपके राज्य का प्रति व्यक्ति औसत। यह पैमाना है, कानूनी सीमा नहीं।",
+                        "Allowance: ${kgNumber(a.perPersonKg)} kg per person a month × ${o.household?.size ?: 1} people = ${kg(a.allowanceKg)}.",
+                        "सीमा: ${kgNumber(a.perPersonKg)} किलो प्रति व्यक्ति हर महीने × ${o.household?.size ?: 1} लोग = ${kg(a.allowanceKg)}।",
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = Cw.inkMuted,
@@ -250,7 +198,7 @@ private fun Hero(o: Overview, kpi: Kpi, allowance: Allowance) {
     val used = kpi.totalEmissions
     val tone = statusFor(used, allowance.allowanceKg)
     val ratio = if (allowance.allowanceKg > 0) used / allowance.allowanceKg else 0.0
-    CwCard(Modifier.padding(horizontal = 16.dp), padding = 18.dp) {
+    CwCard(Modifier.padding(horizontal = 16.dp), padding = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Eyebrow(o.period?.label ?: t("This month", "इस महीने"), Modifier.weight(1f))
             StatusPill(tone, when (tone) {
@@ -260,7 +208,7 @@ private fun Hero(o: Overview, kpi: Kpi, allowance: Allowance) {
             })
         }
         Spacer(Modifier.height(12.dp))
-        AllowanceMeter(ratio, tone, Modifier.padding(horizontal = 18.dp)) {
+        AllowanceMeter(ratio, tone, Modifier.padding(horizontal = 56.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(kgNumber(used), style = MaterialTheme.typography.displayMedium)
                 Text(t("kg CO₂e this month", "किलो CO₂e इस महीने"), style = MaterialTheme.typography.labelMedium, color = Cw.inkMuted)
@@ -302,13 +250,4 @@ private fun difficulty(d: String) = when (d.uppercase()) {
     "MEDIUM" -> t("Some effort", "थोड़ी मेहनत")
     "HARD" -> t("Big change", "बड़ा बदलाव")
     else -> d
-}
-
-@Composable
-private fun band(b: String) = when (b.lowercase()) {
-    "excellent" -> t("Excellent", "बहुत बढ़िया")
-    "good" -> t("Good", "अच्छा")
-    "average" -> t("Average", "औसत")
-    "poor" -> t("Needs work", "सुधार चाहिए")
-    else -> b
 }

@@ -7,7 +7,7 @@ import { requireMembership, handleAuthError } from "@/server/auth/guard";
 import { registeredBy } from "@/server/services/merchant.service";
 import { monthCoverage, resolveReportingPeriod, shiftMonth } from "@/server/period";
 import { benchmarkService, BenchmarkUnavailable } from "@/server/services/benchmark.service";
-import { stateAverage } from "@/server/services/allowance.service";
+import { personAllowance } from "@/server/services/allowance.service";
 
 export async function GET(
   req: NextRequest,
@@ -77,8 +77,8 @@ export async function GET(
       db.recommendation.count({ where: { householdId, status: { in: ["ACCEPTED", "COMPLETED"] } } }),
       db.challenge.count({ where: { householdId } }),
       registeredBy(householdId), // items a shop registered at the counter
-      // the yardstick for the colour: measured state average for this month once there are enough homes
-      stateAverage(household.state, targetMonth),
+      // the yardstick for the colour: 100 kg per person a month
+      personAllowance(),
     ]);
     const currentEmissions = currentSummary?.totalKg ?? 0;
     const priorPartial = coverage.get(priorMonthKey)?.partial ?? false;

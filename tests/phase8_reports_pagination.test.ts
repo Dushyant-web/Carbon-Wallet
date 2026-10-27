@@ -170,7 +170,9 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
       expect(report.scopes.scope2.gridFactorUsed).toBe(GRID); // CEA v22 all-India factor
 
       // Verify category apportionment
-      expect(report.categories.length).toBeGreaterThanOrEqual(4);
+      expect(report.categories.length).toBeGreaterThanOrEqual(2);
+      // food and waste are not part of a home's carbon
+      expect(report.categories.some((c: { category: string }) => c.category === "Food" || c.category === "Waste")).toBe(false);
       const electricityCat = report.categories.find((c: { category: string }) => c.category === "Electricity");
       expect(electricityCat).toBeDefined();
       expect(electricityCat.kgCo2e).toBeGreaterThan(100);

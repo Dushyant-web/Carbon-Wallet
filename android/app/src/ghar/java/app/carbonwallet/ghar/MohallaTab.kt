@@ -92,20 +92,30 @@ fun MohallaTab(nav: Nav) = WithHome { home ->
             }
         }
 
+        item(key = "heatmap") {
+            CwCard(Modifier.padding(horizontal = 16.dp), onClick = { nav.push("Heat map", "हीट मैप") { HeatMapScreen(m.mohalla?.name) } }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Lucide.Flame, null, tint = Cw.terracotta, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(t("Heat map", "हीट मैप"), style = MaterialTheme.typography.titleSmall)
+                        Text(t("Carbon per person, area by area", "इलाक़े के हिसाब से प्रति व्यक्ति कार्बन"), style = MaterialTheme.typography.bodySmall, color = Cw.inkMuted)
+                    }
+                    Text(t("Open", "खोलें"), color = Cw.govBlue, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+
         m.weather?.let { w ->
             item(key = "weather") { WeatherCard(w, m.heat) }
         }
 
         m.facts?.let { f ->
             item(key = "facts") {
-                Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.padding(horizontal = 16.dp)) {
                     TileRow {
                         KpiTile(t("Green homes", "हरे घर"), "${f.green}", Modifier.weight(1f), sub = t("of ${f.homesWithData} with data", "${f.homesWithData} में से"), icon = Lucide.Leaf, accent = Cw.moss)
                         KpiTile(t("Efficient buys", "बचत वाला सामान"), "${f.efficientItems}", Modifier.weight(1f), sub = t("of ${f.shopItems} shop items", "${f.shopItems} दुकान के सामान में से"), icon = Lucide.Star)
-                    }
-                    TileRow {
-                        KpiTile(t("Scheme help", "योजना मदद"), "${f.schemeAsks}", Modifier.weight(1f), sub = t("${f.schemeApplied} applied", "${f.schemeApplied} ने आवेदन किया"), icon = Lucide.Landmark)
-                        KpiTile(t("Homes", "घर"), "${m.mohalla?.homes ?: f.homesWithData}", Modifier.weight(1f), sub = t("in this mohalla", "इस मोहल्ले में"), icon = Lucide.Home)
                     }
                 }
             }

@@ -3,8 +3,8 @@ import { db } from "@/server/db";
 import { ensureHouseholdIdentity } from "@/server/services/identity.service";
 import { runAreaJob } from "@/server/services/mohalla.service";
 import { monthlyAllowance, RUPEES_PER_KWH } from "@/lib/allowance";
-import { CNG_KG_CO2E_PER_KG, DIESEL_KG_CO2E_PER_L, GRID_KG_CO2E_PER_KWH, LPG_KG_CO2E_PER_KG, PETROL_KG_CO2E_PER_L, co2ePerUnit, gasesFromCategories } from "@/lib/ghg";
-import { ANCHORS, LPG_KG_PER_HOME_MONTH, VEHICLES, WASTE, YEARLY_GROWTH } from "./data/realAnchors";
+import { CNG_KG_CO2E_PER_KG, DIESEL_KG_CO2E_PER_L, GRID_KG_CO2E_PER_KWH, LPG_KG_CO2E_PER_KG, PETROL_KG_CO2E_PER_L, gasesFromCategories } from "@/lib/ghg";
+import { ANCHORS, LPG_KG_PER_HOME_MONTH, VEHICLES, YEARLY_GROWTH } from "./data/realAnchors";
 import { KP2 } from "./knowledgePark";
 
 /**
@@ -14,7 +14,7 @@ import { KP2 } from "./knowledgePark";
  *   npx tsx --env-file=.env prisma/seed/realMohallas.ts      (needs the internet once, for the weather)
  *
  * What is real: each state's home electricity ÷ its homes (prisma/seed/data/realAnchors.ts), LPG per home, vehicle
- * ownership, waste per person, the ERA5 weather month by month at each locality (Open-Meteo archive), and the ground (OpenStreetMap
+ * ownership, the ERA5 weather month by month at each locality (Open-Meteo archive), and the ground (OpenStreetMap
  * boundaries, or a stated radius around the locality where OSM has none). What is simulated: who lives where, and
  * how each home differs from its state's average (a log-normal spread). Safe to run again: it replaces its own rows.
  */
@@ -316,7 +316,6 @@ async function fillLocality(loc: Locality, deltaCddDelhi: number) {
     const bills = [];
     for (const m of MONTHS) {
       const kwh = Math.max(15, Math.round(raw[i][m] * k)); // a connected home always draws something
-      const days = daysIn(m);
       const electricity = kwh * GRID_KG_CO2E_PER_KWH;
       const cooking = LPG_KG_PER_HOME_MONTH.value * Math.sqrt(plan.size / 4.4) * LPG_KG_CO2E_PER_KG * (0.9 + r() * 0.2);
       const transport = plan.vehicles.reduce((s, v) => {
@@ -324,9 +323,9 @@ async function fillLocality(loc: Locality, deltaCddDelhi: number) {
         const per = v.fuel === "Electric" ? GRID_KG_CO2E_PER_KWH : v.fuel === "Diesel" ? DIESEL_KG_CO2E_PER_L : v.fuel === "CNG" ? CNG_KG_CO2E_PER_KG : PETROL_KG_CO2E_PER_L;
         return s + units * per;
       }, 0);
-      const waste = plan.size * WASTE.kgPerPersonDay * days * co2ePerUnit("solid_waste_unsegregated", 0.55);
-      const byCategory = { Electricity: r1(electricity), Cooking: r1(cooking), Transport: r1(transport), Waste: r1(waste) };
-      const total = r1(byCategory.Electricity + byCategory.Cooking + byCategory.Transport + byCategory.Waste);
+      // food and waste are not part of a home's carbon here (src/server/counted.ts)
+      const byCategory = { Electricity: r1(electricity), Cooking: r1(cooking), Transport: r1(transport) };
+      const total = r1(byCategory.Electricity + byCategory.Cooking + byCategory.Transport);
       const ratio = total / allowance;
       summaries.push({
         householdId: plan.id,

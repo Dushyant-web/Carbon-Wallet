@@ -211,9 +211,9 @@ const PUBLISHED_FACTORS: FactorDefinition[] = [
     validFrom: new Date("2024-01-01"),
   },
 
-  // --- FOOD & COOKING ---
+  // --- COOKING (food factors below are kept for old logs but no longer counted) ---
   {
-    category: "Food",
+    category: "Cooking",
     type: "lpg_cooking",
     unit: "kg",
     kgCo2ePerUnit: 2.98,

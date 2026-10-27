@@ -99,13 +99,13 @@ fun LoginScreen(flavor: FlavorSpec) {
             Tricolour()
             UtilityBar()
             Column(
-                Modifier.fillMaxWidth().background(Cw.govNavy).padding(top = 28.dp, bottom = 26.dp, start = 20.dp, end = 20.dp),
+                Modifier.fillMaxWidth().background(Cw.govNavy).padding(top = 18.dp, bottom = 16.dp, start = 20.dp, end = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Seal(108.dp)
-                Spacer(Modifier.height(16.dp))
-                Text("कार्बन वॉलेट", color = Color.White, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Fonts.plexDeva))
-                Text("Carbon Wallet", color = Color.White, style = MaterialTheme.typography.headlineMedium.copy(fontFamily = Fonts.newsreader))
+                Seal(76.dp)
+                Spacer(Modifier.height(10.dp))
+                Text("कार्बन वॉलेट", color = Color.White, style = MaterialTheme.typography.titleMedium.copy(fontFamily = Fonts.plexDeva))
+                Text("Carbon Wallet", color = Color.White, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Fonts.newsreader))
                 Spacer(Modifier.height(6.dp))
                 Text(
                     t(flavor.serviceEn, flavor.serviceHi),
@@ -119,7 +119,7 @@ fun LoginScreen(flavor: FlavorSpec) {
 
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Eyebrow(t("Sign in", "साइन इन"))
-            Text(t("Welcome back", "फिर से स्वागत है"), style = MaterialTheme.typography.headlineMedium)
+            Text(t("Welcome back", "फिर से स्वागत है"), style = MaterialTheme.typography.headlineSmall)
 
             Session.notice?.let { Banner(Tone.WARN, it) }
             error?.let { Banner(Tone.BAD, it) }

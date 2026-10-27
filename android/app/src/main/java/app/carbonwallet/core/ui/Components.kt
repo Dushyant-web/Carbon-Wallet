@@ -96,7 +96,7 @@ fun CwCard(
     modifier: Modifier = Modifier,
     background: Color = Cw.card,
     border: Color = Cw.border,
-    padding: Dp = 16.dp,
+    padding: Dp = 12.dp,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -119,7 +119,7 @@ fun Eyebrow(text: String, modifier: Modifier = Modifier, color: Color = Cw.inkMu
 
 @Composable
 fun SectionHeader(title: String, hint: String? = null, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
+    Row(modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall, color = Cw.inkMuted)
@@ -160,17 +160,17 @@ fun KpiTile(label: String, value: String, modifier: Modifier = Modifier, sub: St
         modifier
             .background(Cw.card, CardShape)
             .border(1.dp, Cw.border, CardShape)
-            .padding(14.dp),
+            .padding(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                Icon(icon, null, tint = Cw.inkMuted, modifier = Modifier.size(15.dp))
+                Icon(icon, null, tint = Cw.inkMuted, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
             }
             Text(label, style = MaterialTheme.typography.labelMedium, color = Cw.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Spacer(Modifier.height(6.dp))
-        Text(value, style = MaterialTheme.typography.headlineMedium, color = accent, maxLines = 1)
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = accent, maxLines = 1)
         if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = Cw.inkMuted, maxLines = 2)
     }
 }
@@ -209,13 +209,13 @@ fun ListRow(
         modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .heightIn(min = 56.dp)
-            .padding(vertical = 10.dp),
+            .heightIn(min = 48.dp)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Box(Modifier.size(40.dp).background(iconBg, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
+            Box(Modifier.size(34.dp).background(iconBg, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.width(12.dp))
         }
@@ -245,10 +245,10 @@ fun PrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
-        modifier = modifier.heightIn(min = 52.dp),
+        modifier = modifier.heightIn(min = 46.dp),
         shape = RoundedCornerShape(3.dp),
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Cw.card, disabledContainerColor = color.copy(alpha = 0.45f), disabledContentColor = Cw.card),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
     ) {
         if (busy) {
             CircularProgressIndicator(Modifier.size(18.dp), color = Cw.card, strokeWidth = 2.dp)
@@ -266,7 +266,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 48.dp),
+        modifier = modifier.heightIn(min = 44.dp),
         shape = RoundedCornerShape(3.dp),
         border = BorderStroke(1.dp, if (enabled) color.copy(alpha = 0.6f) else Cw.border),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
@@ -394,13 +394,13 @@ fun <T> RemoteList(
     remote: Remote<T>,
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
-    contentPadding: PaddingValues = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 24.dp),
     content: LazyListScope.(T) -> Unit,
 ) {
     val data = remote.data
     PullToRefreshBox(isRefreshing = remote.loading && data != null, onRefresh = remote.refresh, modifier = modifier.fillMaxSize()) {
         when {
-            data != null -> LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            data != null -> LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (remote.error != null) {
                     item(key = "offline") { Banner(Tone.WARN, offlineText(remote.error), action = { LinkButton(t("Retry", "फिर से"), remote.refresh) }) }
                 }

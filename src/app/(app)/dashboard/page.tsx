@@ -15,12 +15,10 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/states/ErrorState";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
-import { HomeNudges } from "@/components/dashboard/HomeNudges";
 import { NextMonthForecast } from "@/components/dashboard/NextMonthForecast";
-import { GasBreakdown } from "@/components/dashboard/GasBreakdown";
 import { useUiPrefs } from "@/components/providers/UiPrefsProvider";
 import { categoryColor } from "@/lib/viz";
-import { ALLOWANCE_SOURCE, STATUS_WORDS, kgToAcDays, stateInfo, statusFor, type CarbonStatus } from "@/lib/allowance";
+import { STATUS_WORDS, kgToAcDays, stateInfo, statusFor, type CarbonStatus } from "@/lib/allowance";
 import { categoryWords, inr, monthWords, shortMonth } from "@/lib/plainWords";
 
 type TrendPoint = {
@@ -95,8 +93,8 @@ export default function HomePage() {
   const { household, kpi, trendHistory, categoryBreakdown, nextBestAction, period, access } = data;
   const trend: TrendPoint[] = trendHistory || [];
   const used: number = period.hasData ? kpi.totalEmissions : 0;
-  // the yardstick comes from the server: the measured average of the state's homes this month, or the starting estimate
-  const allowance: { allowanceKg: number; perPersonKg: number; source: "HOMES" | "ESTIMATE"; homes: number } = data.allowance;
+  // the yardstick comes from the server: 100 kg per person a month × the people in the home
+  const allowance: { allowanceKg: number; perPersonKg: number } = data.allowance;
   const ratio = allowance.allowanceKg > 0 ? used / allowance.allowanceKg : 0;
   const cs = { allowanceKg: allowance.allowanceKg, ratio, status: statusFor(used, allowance.allowanceKg), state: stateInfo(household.state) };
   const tone = TONE[cs.status];
@@ -161,8 +159,8 @@ export default function HomePage() {
             {period.hasData ? (
               <p className="mt-3 max-w-md text-[15px] leading-relaxed">
                 {t(
-                  `That's ${pctOfAllowance}% of the ${stateName} average for a home of ${household.size}.`,
-                  `यह ${household.size} लोगों के घर के ${stateName} औसत का ${pctOfAllowance}% है।`,
+                  `That's ${pctOfAllowance}% of your allowance (${cs.allowanceKg} kg for ${household.size} people).`,
+                  `यह आपकी सीमा (${household.size} लोगों के लिए ${cs.allowanceKg} किलो) का ${pctOfAllowance}% है।`,
                 )}{" "}
                 {top &&
                   t(
@@ -185,12 +183,12 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* meter: used vs the state average for this home */}
+          {/* meter: used vs this home's allowance */}
           <div className="flex flex-col justify-center gap-3">
             <div className="flex items-baseline justify-between text-[13px]">
               <span className="text-ink-muted">{t("Used", "इस्तेमाल")}</span>
               <span className="text-ink-muted">
-                {t("State average for your home", "आपके घर के लिए राज्य औसत")}: <strong className="text-ink">{cs.allowanceKg} kg</strong>
+                {t("Your allowance", "आपकी सीमा")}: <strong className="text-ink">{cs.allowanceKg} kg</strong>
               </span>
             </div>
             <Meter pct={period.hasData ? pctOfAllowance : 0} status={cs.status} />
@@ -241,7 +239,7 @@ export default function HomePage() {
         <section className="border border-border bg-canvas-card p-5 md:p-6">
           <h2 className="font-heading text-xl font-medium">{t("Last 6 months", "पिछले 6 महीने")}</h2>
           <p className="mt-1 text-[14px] text-ink-muted">
-            {t("Each bar is one month. The dotted line is the state average for your home.", "हर डंडा एक महीना है। बिंदु वाली रेखा आपके घर का राज्य औसत है।")}
+            {t("Each bar is one month. The dotted line is your home's allowance.", "हर डंडा एक महीना है। बिंदु वाली रेखा आपके घर की सीमा है।")}
           </p>
           <MonthBars trend={trend} allowance={cs.allowanceKg} lang={lang} t={t} />
         </section>
@@ -276,9 +274,6 @@ export default function HomePage() {
         </section>
       </div>
 
-      {data.gasBreakdown && <GasBreakdown gases={data.gasBreakdown} monthName={monthName} />}
-
-      <HomeNudges hasData={period.hasData} />
       {data.setup && <GettingStarted setup={data.setup} sealed={(sealed.data ?? []).some((x) => x.anchored)} />}
 
       {/* 3 · Big tiles to the other places */}
@@ -291,13 +286,10 @@ export default function HomePage() {
       </nav>
 
       <p className="font-mono text-[11px] leading-relaxed text-ink-muted">
-        {t("How the state average is set:", "राज्य औसत कैसे तय होता है:")}{" "}
-        {allowance.source === "HOMES"
-          ? t(
-              `the measured average of ${allowance.homes} Carbon Wallet homes in ${cs.state.name} this month (${allowance.perPersonKg} kg per person), times the people in your home.`,
-              `इस महीने ${cs.state.nameHi} के ${allowance.homes} Carbon Wallet घरों का मापा हुआ औसत (${allowance.perPersonKg} किलो प्रति व्यक्ति), आपके घर के लोगों से गुणा।`,
-            )
-          : ALLOWANCE_SOURCE}{" "}
+        {t(
+          `Your allowance: ${allowance.perPersonKg} kg per person a month × ${household.size} people = ${cs.allowanceKg} kg.`,
+          `आपकी सीमा: ${allowance.perPersonKg} किलो प्रति व्यक्ति हर महीने × ${household.size} लोग = ${cs.allowanceKg} किलो।`,
+        )}{" "}
         <Link href="/how-we-calculate" className="underline underline-offset-2">
           {t("More", "और")}
         </Link>
@@ -307,11 +299,11 @@ export default function HomePage() {
 }
 
 function Meter({ pct, status }: { pct: number; status: CarbonStatus }) {
-  // the bar spans 0–200 % of the average; the 100 % mark is the average
+  // the bar spans 0–200 % of the allowance; the 100 % mark is the allowance
   const width = Math.min(100, pct / 2);
   return (
     <div>
-      <div className="relative h-6 w-full bg-canvas-subtle" role="meter" aria-valuemin={0} aria-valuemax={200} aria-valuenow={pct} aria-label="Used vs state average">
+      <div className="relative h-6 w-full bg-canvas-subtle" role="meter" aria-valuemin={0} aria-valuemax={200} aria-valuenow={pct} aria-label="Used vs allowance">
         <div className={`h-full ${TONE[status].bar}`} style={{ width: `${width}%` }} />
         <span className="absolute inset-y-[-4px] left-1/2 w-[2px] bg-ink" aria-hidden />
       </div>
@@ -332,7 +324,7 @@ function MonthBars({ trend, allowance, lang, t }: { trend: TrendPoint[]; allowan
       <div className="relative flex h-56 items-end gap-2 border-b border-ink sm:gap-3">
         <div className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-ink/60" style={{ bottom: `${linePct}%` }} aria-hidden>
           <span className="absolute -top-5 right-0 bg-canvas-card px-1 font-mono text-[10.5px] text-ink-muted">
-            {t("average", "औसत")} {allowance} kg
+            {t("allowance", "सीमा")} {allowance} kg
           </span>
         </div>
         {trend.map((pt) => {

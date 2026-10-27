@@ -25,10 +25,6 @@ const TILES: { kind: Kind; label: string; icon: React.ReactNode }[] = [
 const OTHER: { category: Category; type: string; unit: string; label: string }[] = [
   { category: "Electricity", type: "ac_cooling", unit: "hours", label: "AC running (hours)" },
   { category: "Electricity", type: "grid_electricity", unit: "kWh", label: "Electricity (units)" },
-  { category: "Food", type: "meal_veg", unit: "meal", label: "Vegetarian meals" },
-  { category: "Food", type: "meal_non_veg", unit: "meal", label: "Non-vegetarian meals" },
-  { category: "Food", type: "grocery_basket", unit: "basket", label: "Weekly grocery baskets" },
-  { category: "Waste", type: "solid_waste_unsegregated", unit: "kg", label: "Unsorted household waste (kg)" },
 ];
 
 type Preview = { kgCo2e: number; factorValue: number; effectiveQuantity: number; effectiveUnit: string; factorSource: string; counted: boolean; coveredBy: "bill" | "fuel" | null };

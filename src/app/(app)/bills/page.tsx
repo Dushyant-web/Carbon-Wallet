@@ -12,6 +12,7 @@ import { SectionHeading } from "@/components/ui/Card";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { BillView } from "@/lib/bills";
+import { ConsumerIdCard } from "@/components/bills/ConsumerIdCard";
 
 const fmtDate = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -37,9 +38,12 @@ function BillsPage() {
   const avgRate = pricedKwh > 0 ? priced.reduce((s, b) => s + (b.amountInr ?? 0), 0) / pricedKwh : null;
   const cal = data?.calibration;
   const acMeasured = cal && cal.method !== "default";
+  const latestConsumer = [...bills].sort((a, b) => b.periodEnd.localeCompare(a.periodEnd)).find((b) => b.consumerMasked)?.consumerMasked ?? null;
 
   return (
     <div className="flex flex-col gap-12">
+      <ConsumerIdCard householdId={activeHouseholdId} fromBill={latestConsumer} />
+
       <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div>
           <span className="label-caps">Bills</span>

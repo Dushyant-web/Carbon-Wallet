@@ -1,5 +1,6 @@
 package app.carbonwallet.ghar
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -112,13 +113,16 @@ fun BillsTab(nav: Nav) = WithHome { home ->
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) upload(uri) }
 
     RemoteList(remote) { data ->
+        item(key = "consumer") {
+            ConsumerIdCard(home.id, data.bills.sortedByDescending { it.periodEnd }.firstNotNullOfOrNull { it.consumerMasked })
+        }
         if (home.canAddBills) {
             item(key = "add") {
-                CwCard(padding = 18.dp) {
+                CwCard {
                     Eyebrow(t("Add this month's bill", "इस महीने का बिल जोड़ें"))
                     Spacer(Modifier.height(4.dp))
-                    Text(t("Take a photo of the bill. We read the units for you.", "बिल की फ़ोटो लें। यूनिट हम पढ़ लेंगे।"), style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(14.dp))
+                    Text(t("Take a photo of the bill. We read the units for you.", "बिल की फ़ोटो लें। यूनिट हम पढ़ लेंगे।"), style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(10.dp))
                     if (uploading) {
                         Row(Modifier.fillMaxWidth().background(Cw.govSky, CardShape).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(Modifier.size(20.dp), color = Cw.govNavy, strokeWidth = 2.dp)
@@ -210,6 +214,53 @@ fun BillsTab(nav: Nav) = WithHome { home ->
             item { EmptyState(Lucide.Receipt, t("No bills yet", "अभी कोई बिल नहीं"), t("Your first bill sets up this month's numbers.", "पहला बिल जोड़ते ही इस महीने के आँकड़े बनेंगे।")) }
         }
         items(data.bills.sortedByDescending { it.periodEnd }, key = { it.id }) { BillRow(it) }
+    }
+}
+
+/** The consumer number printed on the electricity bill, for show only: kept on this phone and never sent. */
+@Composable
+private fun ConsumerIdCard(homeId: String, fromBill: String?) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("cw_home", Context.MODE_PRIVATE) }
+    val key = "consumer-id:$homeId"
+    var saved by remember(homeId) { mutableStateOf(prefs.getString(key, null)) }
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var draft by rememberSaveable { mutableStateOf("") }
+    val shown = saved ?: fromBill
+
+    CwCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).background(Cw.govSky, CardShape), contentAlignment = Alignment.Center) {
+                Icon(Lucide.IdCard, null, tint = Cw.govNavy, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(t("Consumer ID", "उपभोक्ता आईडी"), style = MaterialTheme.typography.labelSmall, color = Cw.inkMuted)
+                Text(shown ?: t("Not added yet", "अभी नहीं जोड़ा"), style = MaterialTheme.typography.titleMedium, color = if (shown == null) Cw.inkMuted else Cw.ink)
+            }
+            if (!editing) {
+                Text(
+                    if (shown == null) t("Add", "जोड़ें") else t("Edit", "बदलें"),
+                    color = Cw.govBlue,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.clickable { draft = saved ?: ""; editing = true }.padding(8.dp),
+                )
+            }
+        }
+        if (editing) {
+            Spacer(Modifier.height(10.dp))
+            CwTextField(draft, { draft = it.take(20) }, t("Consumer ID from your bill", "बिल पर लिखी उपभोक्ता आईडी"), Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SecondaryButton(t("Cancel", "रद्द करें"), { editing = false }, Modifier.weight(1f))
+                PrimaryButton(t("Save", "सहेजें"), {
+                    val value = draft.trim().ifBlank { null }
+                    prefs.edit().apply { if (value == null) remove(key) else putString(key, value) }.apply()
+                    saved = value
+                    editing = false
+                }, Modifier.weight(1f), color = Cw.govNavy)
+            }
+        }
     }
 }
 

@@ -130,34 +130,34 @@ fun GovHeader(
             Modifier
                 .fillMaxWidth()
                 .background(Color.White)
-                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                .padding(start = 12.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Seal(42.dp, withText = false)
-            Spacer(Modifier.width(10.dp))
+            Seal(34.dp, withText = false)
+            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("कार्बन वॉलेट", style = MaterialTheme.typography.titleMedium.copy(fontFamily = app.carbonwallet.core.ui.theme.Fonts.plexDeva), color = Cw.govNavy, maxLines = 1)
+                    Text("कार्बन वॉलेट", style = MaterialTheme.typography.titleSmall.copy(fontFamily = app.carbonwallet.core.ui.theme.Fonts.plexDeva), color = Cw.govNavy, maxLines = 1)
                     Text(
                         "  Carbon Wallet",
-                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = app.carbonwallet.core.ui.theme.Fonts.newsreader),
+                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = app.carbonwallet.core.ui.theme.Fonts.newsreader),
                         color = Cw.govNavy,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(t(serviceEn, serviceHi), style = MaterialTheme.typography.labelMedium, color = Cw.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(t(serviceEn, serviceHi), style = MaterialTheme.typography.labelSmall, color = Cw.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             actions()
         }
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Cw.saffron))
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Cw.saffron))
     }
 }
 
 @Composable
 fun UtilityBar() {
     Row(
-        Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 12.dp),
+        Modifier.fillMaxWidth().height(28.dp).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -173,7 +173,7 @@ fun UtilityBar() {
             val on = UiPrefs.textSize == i
             Box(
                 Modifier
-                    .heightIn(min = 26.dp)
+                    .heightIn(min = 22.dp)
                     .background(if (on) Color.White else Color.Transparent, RoundedCornerShape(1.dp))
                     .clickable { UiPrefs.updateTextSize(i) }
                     .semantics {
@@ -214,12 +214,12 @@ fun LanguageToggle(light: Boolean = true) {
 fun HeaderIcon(icon: ImageVector, description: String, onClick: () -> Unit, badge: Int = 0) {
     Box(
         Modifier
-            .size(44.dp)
+            .size(40.dp)
             .clickable(onClick = onClick)
             .semantics { contentDescription = if (badge > 0) "$description ($badge)" else description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = Cw.govNavy, modifier = Modifier.size(22.dp))
+        Icon(icon, null, tint = Cw.govNavy, modifier = Modifier.size(20.dp))
         if (badge > 0) {
             Box(
                 Modifier
@@ -244,11 +244,11 @@ fun Ticker(updates: List<PortalUpdate>, modifier: Modifier = Modifier, onOpen: (
     var paused by remember { mutableStateOf(false) }
     val lang = UiPrefs.lang
     Row(
-        modifier.fillMaxWidth().height(40.dp).background(Cw.govSky).border(1.dp, Cw.govNavy.copy(alpha = 0.12f)),
+        modifier.fillMaxWidth().height(32.dp).background(Cw.govSky).border(1.dp, Cw.govNavy.copy(alpha = 0.12f)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.fillMaxHeight().background(Cw.saffron).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-            Text(t("What's new", "नया क्या है"), color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(t("What's new", "नया क्या है"), color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
         }
         val line = updates.joinToString("     ◆     ") { lang.pick(it.en, it.hi) }
         Box(Modifier.weight(1f).fillMaxHeight().clickable { onOpen(updates.first()) }, contentAlignment = Alignment.CenterStart) {
@@ -264,7 +264,7 @@ fun Ticker(updates: List<PortalUpdate>, modifier: Modifier = Modifier, onOpen: (
         }
         Box(
             Modifier
-                .size(40.dp)
+                .size(32.dp)
                 .border(1.dp, Cw.govNavy.copy(alpha = 0.12f))
                 .clickable { paused = !paused }
                 .semantics { contentDescription = if (paused) "Play updates" else "Pause updates" },
@@ -279,11 +279,11 @@ fun Ticker(updates: List<PortalUpdate>, modifier: Modifier = Modifier, onOpen: (
 @Composable
 fun PortalBand(title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().background(Cw.govNavy).padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text(title, color = Color.White, style = MaterialTheme.typography.headlineSmall)
+        Column(Modifier.fillMaxWidth().background(Cw.govNavy).padding(horizontal = 14.dp, vertical = 9.dp)) {
+            Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
             if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = 0.78f), style = MaterialTheme.typography.bodySmall)
         }
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Cw.saffron))
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Cw.saffron))
     }
 }
 

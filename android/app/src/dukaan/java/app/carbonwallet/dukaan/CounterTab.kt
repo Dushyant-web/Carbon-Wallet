@@ -365,8 +365,8 @@ private fun colourWord(tone: Tone) = when (tone) {
 
 @Composable
 private fun colourMeaning(tone: Tone) = when (tone) {
-    Tone.GOOD -> t("Below their state's average", "राज्य के औसत से कम")
-    Tone.WARN -> t("Close to their state's average", "राज्य के औसत के पास")
-    Tone.BAD -> t("Above their state's average", "राज्य के औसत से ज़्यादा")
+    Tone.GOOD -> t("Within their allowance (100 kg a person)", "अपनी सीमा के अंदर (100 किलो प्रति व्यक्ति)")
+    Tone.WARN -> t("Close to their allowance (100 kg a person)", "अपनी सीमा के पास (100 किलो प्रति व्यक्ति)")
+    Tone.BAD -> t("Over their allowance (100 kg a person)", "अपनी सीमा से ज़्यादा (100 किलो प्रति व्यक्ति)")
     else -> t("This home has no bills yet", "इस घर का अभी कोई बिल नहीं")
 }

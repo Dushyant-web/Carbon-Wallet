@@ -18,6 +18,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -81,7 +82,14 @@ object Store {
 
     private suspend fun load(path: String): String {
         val started = generation
-        val text = Http.getText(path)
+        val text = try {
+            Http.getText(path)
+        } catch (e: ApiException) {
+            // the hosted server sometimes fails one call when many arrive together; a second try usually works
+            if (e.status < 500) throw e
+            delay(1500)
+            Http.getText(path)
+        }
         if (started == generation) {
             memory[path] = text
             withContext(Dispatchers.IO) {

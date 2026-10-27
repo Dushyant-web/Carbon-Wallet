@@ -63,18 +63,14 @@ object Cw {
     // data-viz categories
     val vizElectricity = Color(0xFFB4532F)
     val vizTransport = Color(0xFF2F5D7C)
-    val vizFood = Color(0xFF9A7B2E)
     val vizCooking = Color(0xFF6E5A8A)
-    val vizWaste = Color(0xFF5A7D52)
     val vizFlights = Color(0xFF48443B)
     val vizOther = Color(0xFFA49C8B)
 
     fun category(name: String): Color = when (name.lowercase()) {
         "electricity" -> vizElectricity
         "transport" -> vizTransport
-        "food" -> vizFood
         "cooking" -> vizCooking
-        "waste" -> vizWaste
         "travel", "flights" -> vizFlights
         else -> vizOther
     }
@@ -109,22 +105,23 @@ private fun typography(lang: Lang): Typography {
     fun s(family: FontFamily, size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) =
         // no colour here: text takes its colour from the surface it sits on (ink on paper, paper on buttons)
         TextStyle(fontFamily = family, fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = tracking.sp)
+    // a calm, compact scale: one big number per screen, everything else small and quiet
     return Typography(
-        displayLarge = s(heading, 44, 50, FontWeight.SemiBold, -0.5),
-        displayMedium = s(heading, 36, 42, FontWeight.SemiBold, -0.4),
-        displaySmall = s(heading, 30, 36, FontWeight.SemiBold, -0.3),
-        headlineLarge = s(heading, 28, 34, FontWeight.SemiBold, -0.2),
-        headlineMedium = s(heading, 24, 30, FontWeight.SemiBold, -0.2),
-        headlineSmall = s(heading, 21, 27, FontWeight.SemiBold),
-        titleLarge = s(heading, 19, 25, FontWeight.SemiBold),
-        titleMedium = s(body, 16, 22, FontWeight.SemiBold),
-        titleSmall = s(body, 14, 20, FontWeight.SemiBold),
-        bodyLarge = s(body, 16, 24, FontWeight.Normal),
-        bodyMedium = s(body, 14, 21, FontWeight.Normal),
-        bodySmall = s(body, 12, 17, FontWeight.Normal),
-        labelLarge = s(body, 14, 20, FontWeight.Medium),
+        displayLarge = s(heading, 38, 44, FontWeight.SemiBold, -0.5),
+        displayMedium = s(heading, 30, 36, FontWeight.SemiBold, -0.4),
+        displaySmall = s(heading, 26, 32, FontWeight.SemiBold, -0.3),
+        headlineLarge = s(heading, 24, 30, FontWeight.SemiBold, -0.2),
+        headlineMedium = s(heading, 20, 26, FontWeight.SemiBold, -0.2),
+        headlineSmall = s(heading, 18, 24, FontWeight.SemiBold),
+        titleLarge = s(heading, 17, 23, FontWeight.SemiBold),
+        titleMedium = s(body, 15, 21, FontWeight.SemiBold),
+        titleSmall = s(body, 13, 19, FontWeight.SemiBold),
+        bodyLarge = s(body, 15, 22, FontWeight.Normal),
+        bodyMedium = s(body, 13, 19, FontWeight.Normal),
+        bodySmall = s(body, 12, 16, FontWeight.Normal),
+        labelLarge = s(body, 13, 18, FontWeight.Medium),
         labelMedium = s(body, 12, 16, FontWeight.Medium, 0.2),
-        labelSmall = s(body, 11, 14, FontWeight.Medium, 0.4),
+        labelSmall = s(body, 10, 13, FontWeight.Medium, 0.4),
     )
 }
 

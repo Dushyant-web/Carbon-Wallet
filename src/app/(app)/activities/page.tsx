@@ -15,8 +15,7 @@ const FILTERS = [
   ["Electricity", "Electricity"],
   ["Transport", "Car & bike"],
   ["Travel", "Trips & flights"],
-  ["Food", "Food"],
-  ["Waste", "Waste"],
+  ["Cooking", "Cooking gas"],
   ["Refrigerant", "AC gas refills"],
 ] as const;
 
