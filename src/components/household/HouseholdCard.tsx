@@ -87,7 +87,7 @@ export function HouseholdCard({ data }: { data: HouseholdCardData }) {
           <span className="label-caps">{period?.label ?? "This month"}</span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-heading text-5xl font-medium leading-none tabular-nums">{kpi.totalEmissions}</span>
-            <span className="font-mono text-xs text-ink-muted">kg CO₂</span>
+            <span className="font-mono text-xs text-ink-muted">kg CO₂e</span>
           </div>
           {kpi.trendPct !== null && (
             <p className={`mt-2 font-mono text-xs ${kpi.trendPct <= 0 ? "text-success-text" : "text-critical-text"}`}>

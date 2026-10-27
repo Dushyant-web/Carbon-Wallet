@@ -10,7 +10,17 @@ import { db } from "@/server/db";
 export type NotifyPrefs = { checkin: boolean; bill: boolean; goal: boolean; quietFrom: number; quietTo: number };
 export const DEFAULT_PREFS: NotifyPrefs = { checkin: true, bill: true, goal: true, quietFrom: 22, quietTo: 8 }; // hours, IST
 
-export type PushPayload = { title: string; body: string; url: string; tag: string };
+export type NotificationKind = "SHOP" | "REMOVAL" | "SCHEME" | "HELP" | "REMINDER" | "MOHALLA" | "HEAT" | "SYSTEM";
+export type PushPayload = { title: string; body: string; url: string; tag: string; kind?: NotificationKind };
+
+/** What kind of notice a push is, from its tag ("merchant:…", "removal:…"), for the bell's icons and filters. */
+function kindOf(p: PushPayload): NotificationKind {
+  if (p.kind) return p.kind;
+  const prefix = p.tag.split(":")[0];
+  return (
+    ({ merchant: "SHOP", removal: "REMOVAL", scheme: "SCHEME", grievance: "HELP", BILL: "REMINDER", CHECKIN: "REMINDER", GOAL: "REMINDER", heat: "HEAT", mohalla: "MOHALLA" } as Record<string, NotificationKind>)[prefix] ?? "SYSTEM"
+  );
+}
 
 let configuredFor = "";
 export function pushConfigured(): boolean {
@@ -54,8 +64,16 @@ export async function removeSubscription(userId: string, endpoint: string) {
   await db.pushSubscription.deleteMany({ where: { userId, endpoint } });
 }
 
-/** Sends to every device the person enabled; devices the push service says are gone are removed. */
+/**
+ * Notifies one person: always into the website's notification centre (the bell), and as a phone / desktop push
+ * on every device they enabled. Devices the push service says are gone are removed. Returns pushes sent.
+ */
 export async function sendToUser(userId: string, payload: PushPayload): Promise<number> {
+  if (payload.tag !== "test") {
+    await db.notification
+      .create({ data: { userId, kind: kindOf(payload), title: payload.title.slice(0, 140), body: payload.body.slice(0, 500), url: payload.url.startsWith("/") ? payload.url : "/" } })
+      .catch(() => null); // the notice must never break the action that caused it
+  }
   if (!pushConfigured()) return 0;
   const subs = await db.pushSubscription.findMany({ where: { userId } });
   let sent = 0;
@@ -69,5 +87,13 @@ export async function sendToUser(userId: string, payload: PushPayload): Promise<
       if (status === 404 || status === 410) await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
     }
   }
+  return sent;
+}
+
+/** Push to the people of a home (owners only, or everyone). A failed push never fails the action that caused it. */
+export async function notifyHousehold(householdId: string, payload: PushPayload, roles: string[] = ["OWNER", "MEMBER", "VIEWER"]): Promise<number> {
+  const members = await db.membership.findMany({ where: { householdId, status: "ACTIVE", role: { in: roles } }, select: { userId: true } });
+  let sent = 0;
+  for (const m of members) sent += await sendToUser(m.userId, payload).catch(() => 0);
   return sent;
 }

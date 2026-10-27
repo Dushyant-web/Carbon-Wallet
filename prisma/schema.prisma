@@ -21,6 +21,8 @@ model User {
   sessions            Session[]
   pushSubscriptions   PushSubscription[]
   merchant            Merchant?
+  oauthIdentities     OAuthIdentity[]
+  notifications       Notification[]
   notifyPrefs         String?            @map("notify_prefs") // JSON: which reminders, and quiet hours (reminders.service.ts)
   consentVersion      String?            @map("consent_version") // the privacy notice this person agreed to (privacy.service.ts)
   consentAt           DateTime?          @map("consent_at")
@@ -30,22 +32,22 @@ model User {
 }
 
 model Household {
-  id                  String           @id @default(cuid())
+  id                  String             @id @default(cuid())
   name                String
   city                String
   state               String
-  country             String           @default("IN")
+  country             String             @default("IN")
   size                Int
-  homeType            String           @map("home_type")
-  floorAreaM2         Float            @map("floor_area_m2")
-  monthlyBudgetInr    Float?           @map("monthly_budget_inr")
-  joinCode            String           @unique @map("join_code")
-  carbonId            String?          @unique @map("carbon_id") // CW-UP-26-0001-7, permanent public identifier
-  publicToken         String?          @unique @map("public_token") // unguessable token behind the shareable public page
-  cardCode            String?          @unique @map("card_code") // private barcode/NFC code, only Carbon Wallet readers resolve it
-  status              String           @default("ACTIVE") // ACTIVE, ARCHIVED, DELETION_PENDING
-  deletionRequestedAt DateTime?        @map("deletion_requested_at") // erased (with its files and sealed-statement salts) 30 days after this
-  createdAt           DateTime         @default(now()) @map("created_at")
+  homeType            String             @map("home_type")
+  floorAreaM2         Float              @map("floor_area_m2")
+  monthlyBudgetInr    Float?             @map("monthly_budget_inr")
+  joinCode            String             @unique @map("join_code")
+  carbonId            String?            @unique @map("carbon_id") // CW-UP-26-0001-7, permanent public identifier
+  publicToken         String?            @unique @map("public_token") // unguessable token behind the shareable public page
+  cardCode            String?            @unique @map("card_code") // private barcode/NFC code, only Carbon Wallet readers resolve it
+  status              String             @default("ACTIVE") // ACTIVE, ARCHIVED, DELETION_PENDING
+  deletionRequestedAt DateTime?          @map("deletion_requested_at") // erased (with its files and sealed-statement salts) 30 days after this
+  createdAt           DateTime           @default(now()) @map("created_at")
   memberships         Membership[]
   activities          Activity[]
   emissionEvents      EmissionEvent[]
@@ -67,6 +69,11 @@ model Household {
   calibrations        Calibration[]
   merchantScans       MerchantScan[]
   merchantSales       MerchantSale[]
+  ownsHome            Boolean?           @map("owns_home") // asked once, for schemes like rooftop solar
+  demo                Boolean            @default(false) @map("demo") // generated demo neighbourhood (prisma/seed/knowledgePark.ts), labelled as such
+  removalRequests     RemovalRequest[]
+  schemeHelp          SchemeHelp[]
+  location            HouseholdLocation?
 
   @@map("households")
 }
@@ -161,51 +168,53 @@ model RecurringRule {
 }
 
 model Appliance {
-  id             String        @id @default(cuid())
-  householdId    String        @map("household_id")
+  id             String           @id @default(cuid())
+  householdId    String           @map("household_id")
   name           String?
   type           String // AC, Refrigerator, WaterHeater, WashingMachine, SolarPV, etc.
   rating         String // 5_STAR, 4_STAR, 3_STAR, INVERTER, NON_INVERTER
-  powerKw        Float         @map("power_kw")
-  avgHoursPerDay Float         @map("avg_hours_per_day")
-  createdAt      DateTime      @default(now()) @map("created_at")
+  powerKw        Float            @map("power_kw")
+  avgHoursPerDay Float            @map("avg_hours_per_day")
+  createdAt      DateTime         @default(now()) @map("created_at")
   // Who put it here: the owner, or a registered shop at the counter (merchant.service.ts). Shop-entered specs are locked.
-  source         String        @default("OWNER") // OWNER, MERCHANT
+  source         String           @default("OWNER") // OWNER, MERCHANT
   brand          String?
   model          String?
-  serialNo       String?       @map("serial_no")
-  purchasedOn    DateTime?     @map("purchased_on")
+  serialNo       String?          @map("serial_no")
+  purchasedOn    DateTime?        @map("purchased_on")
   // From the BEE star label. Star bands are re-based every few years, so the label's year says what its stars mean.
-  capacityTon    Float?        @map("capacity_ton")
-  annualKwh      Float?        @map("annual_kwh")
-  labelYear      Int?          @map("label_year")
+  capacityTon    Float?           @map("capacity_ton")
+  annualKwh      Float?           @map("annual_kwh")
+  labelYear      Int?             @map("label_year")
   refrigerant    String? // R32, R410A, R290, R22
-  household      Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household      Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
   sale           MerchantSale?
+  removals       RemovalRequest[]
 
   @@unique([householdId, serialNo])
   @@map("appliances")
 }
 
 model Vehicle {
-  id             String        @id @default(cuid())
-  householdId    String        @map("household_id")
+  id             String           @id @default(cuid())
+  householdId    String           @map("household_id")
   name           String?
   type           String // Car, TwoWheeler, SUV, PublicTransit
   fuel           String // Petrol, Diesel, CNG, Electric, Hybrid
-  kmPerUnit      Float         @map("km_per_unit")
-  monthlyKm      Float         @map("monthly_km")
+  kmPerUnit      Float            @map("km_per_unit")
+  monthlyKm      Float            @map("monthly_km")
   year           Int? // model year, for age-adjusted mileage
-  createdAt      DateTime      @default(now()) @map("created_at")
-  source         String        @default("OWNER") // OWNER, MERCHANT (registered by the dealer at the counter)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  source         String           @default("OWNER") // OWNER, MERCHANT (registered by the dealer at the counter)
   make           String?
   model          String?
   vin            String? // chassis number
-  registrationNo String?       @map("registration_no") // often given by the RTO after the sale
-  purchasedOn    DateTime?     @map("purchased_on")
-  household      Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  registrationNo String?          @map("registration_no") // often given by the RTO after the sale
+  purchasedOn    DateTime?        @map("purchased_on")
+  household      Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
   fuelLogs       FuelLog[]
   sale           MerchantSale?
+  removals       RemovalRequest[]
 
   @@unique([householdId, vin])
   @@map("vehicles")
@@ -241,6 +250,7 @@ model MonthlySummary {
   month       String // "YYYY-MM"
   totalKg     Float     @map("total_kg")
   byCategory  String    @map("by_category") // JSON string of category -> kg map
+  byGas       String    @default("{}") @map("by_gas") // JSON: kg CO₂e per gas (CO2, CH4, N2O, HFC, MIXED)
   score       Float // 0 - 100
   updatedAt   DateTime  @updatedAt @map("updated_at")
   household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
@@ -509,19 +519,21 @@ model ErasureLog {
 
 /// A shop selling appliances and/or vehicles. Signs up, then a platform admin approves it before it can scan cards.
 model Merchant {
-  id           String         @id @default(cuid())
-  userId       String         @unique @map("user_id")
-  businessName String         @map("business_name")
+  id           String          @id @default(cuid())
+  userId       String          @unique @map("user_id")
+  businessName String          @map("business_name")
   gstin        String?
   city         String
   state        String
   sells        String // APPLIANCES, VEHICLES, BOTH
-  status       String         @default("PENDING") // PENDING, APPROVED, SUSPENDED
-  reviewedAt   DateTime?      @map("reviewed_at")
-  createdAt    DateTime       @default(now()) @map("created_at")
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       String          @default("PENDING") // PENDING, APPROVED, SUSPENDED
+  reviewedAt   DateTime?       @map("reviewed_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   scans        MerchantScan[]
   sales        MerchantSale[]
+  schemeHelp   SchemeHelp[]
+  catalogue    CatalogueItem[]
 
   @@map("merchants")
 }
@@ -545,23 +557,317 @@ model MerchantScan {
 
 /// What a shop registered to a household. Outlives the item, so the shop keeps its history and admins see rejections.
 model MerchantSale {
-  id          String     @id @default(cuid())
-  merchantId  String     @map("merchant_id")
-  householdId String?    @map("household_id") // cleared when the household is erased
-  kind        String // APPLIANCE, VEHICLE
-  applianceId String?    @unique @map("appliance_id")
-  vehicleId   String?    @unique @map("vehicle_id")
-  summary     String // "1.5 t 5-star inverter AC", for the shop's history
-  invoiceRef  String?    @map("invoice_ref")
-  status      String     @default("REGISTERED") // REGISTERED, REJECTED (owner: not ours), REMOVED (sold or scrapped)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  closedAt    DateTime?  @map("closed_at")
-  merchant    Merchant   @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
-  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
-  vehicle     Vehicle?   @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  id              String         @id @default(cuid())
+  merchantId      String         @map("merchant_id")
+  householdId     String?        @map("household_id") // cleared when the household is erased
+  kind            String // APPLIANCE, VEHICLE
+  applianceId     String?        @unique @map("appliance_id")
+  vehicleId       String?        @unique @map("vehicle_id")
+  summary         String // "1.5 t 5-star inverter AC", for the shop's history
+  invoiceRef      String?        @map("invoice_ref")
+  status          String         @default("REGISTERED") // REGISTERED, REJECTED (owner: not ours), REMOVED (sold or scrapped)
+  catalogueItemId String?        @map("catalogue_item_id") // picked from the shop's catalogue at the counter
+  priceInr        Int?           @map("price_inr")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  closedAt        DateTime?      @map("closed_at")
+  merchant        Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  household       Household?     @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  appliance       Appliance?     @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  vehicle         Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  catalogueItem   CatalogueItem? @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
 
   @@index([merchantId, createdAt])
   @@index([householdId])
   @@map("merchant_sales")
+}
+
+/// Signing in with Google: the Google account (subject id) linked to one of our users.
+model OAuthIdentity {
+  id        String   @id @default(cuid())
+  provider  String // GOOGLE
+  subject   String // Google's stable "sub" claim, never the email
+  userId    String   @map("user_id")
+  email     String
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("oauth_identities")
+}
+
+/// A government scheme in the Sarkari Yojana catalogue. Admins keep it current; `lastChecked` says when.
+model Scheme {
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  category     String // SOLAR, EV, SCRAPPAGE, AC, EFFICIENT, LPG
+  name         String
+  nameHi       String       @map("name_hi")
+  summary      String // one plain line
+  summaryHi    String       @map("summary_hi")
+  benefit      String
+  benefitHi    String       @map("benefit_hi")
+  whoQualifies String       @map("who_qualifies")
+  steps        String // JSON array of plain steps to claim it
+  documents    String? // JSON array
+  link         String // official portal
+  helpline     String?
+  states       String       @default("ALL") // ALL, or comma-separated state codes
+  discoms      String? // comma-separated; null = any electricity company
+  validUntil   DateTime?    @map("valid_until")
+  lastChecked  DateTime     @map("last_checked")
+  sourceUrl    String       @map("source_url")
+  status       String       @default("ACTIVE") // ACTIVE, CHECK (terms not re-confirmed), HIDDEN
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  help         SchemeHelp[]
+
+  @@map("schemes")
+}
+
+/// Help with a scheme: a shop explained it at the counter, or the home says it applied.
+model SchemeHelp {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  schemeId    String    @map("scheme_id")
+  merchantId  String?   @map("merchant_id")
+  status      String // EXPLAINED, APPLIED
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  scheme      Scheme    @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  merchant    Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+
+  @@index([householdId])
+  @@map("scheme_help")
+}
+
+/// The owner asks to take an item off the home (broken, sold, scrapped, or a shop's "not ours").
+/// The item stays counted until an admin approves. Photos are encrypted and deleted 90 days after the decision.
+model RemovalRequest {
+  id            String         @id @default(cuid())
+  householdId   String         @map("household_id")
+  kind          String // APPLIANCE, VEHICLE
+  applianceId   String?        @map("appliance_id")
+  vehicleId     String?        @map("vehicle_id")
+  itemSummary   String         @map("item_summary") // kept after the item is gone
+  shopName      String?        @map("shop_name")
+  reason        String // BROKEN, SOLD, GIVEN_AWAY, SCRAPPED, NEVER_HAD, NOT_OURS
+  note          String // what happened, about two lines
+  status        String         @default("PENDING") // PENDING, APPROVED, REJECTED
+  requestedById String         @map("requested_by_id")
+  decidedById   String?        @map("decided_by_id")
+  decisionNote  String?        @map("decision_note")
+  decidedAt     DateTime?      @map("decided_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  household     Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  appliance     Appliance?     @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  vehicle       Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  photos        RemovalPhoto[]
+
+  @@index([status, createdAt])
+  @@index([householdId])
+  @@map("removal_requests")
+}
+
+model RemovalPhoto {
+  id        String         @id @default(cuid())
+  requestId String         @map("request_id")
+  mimeType  String         @map("mime_type")
+  sizeBytes Int            @map("size_bytes")
+  data      Bytes // AES-256-GCM (storage/encrypted.ts), metadata stripped before encryption
+  createdAt DateTime       @default(now()) @map("created_at")
+  request   RemovalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("removal_photos")
+}
+
+/// Where a home is, coarsely: H3 hexagons only, never the exact point.
+model HouseholdLocation {
+  householdId String    @id @map("household_id")
+  h3Cell      String    @map("h3_cell") // resolution 10, about 0.015 km²
+  h3Area      String    @map("h3_area") // resolution 7, about 5 km²: weather and grouping
+  pincode     String?
+  locality    String?
+  district    String?
+  state       String?
+  source      String // GPS, MANUAL
+  consentAt   DateTime  @map("consent_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  mohallaId   String?   @map("mohalla_id")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  mohalla     Mohalla?  @relation(fields: [mohallaId], references: [id], onDelete: SetNull)
+
+  @@index([h3Area])
+  @@index([mohallaId])
+  @@map("household_locations")
+}
+
+/// About 40 neighbouring homes. Formed by mohalla.service.ts; ids stay stable between runs.
+model Mohalla {
+  id        String              @id @default(cuid())
+  code      String              @unique // "<group key>#<n>": loc:<city>:<locality> or h3:<area>
+  name      String
+  city      String
+  state     String
+  h3Area    String              @map("h3_area")
+  homes     Int
+  updatedAt DateTime            @updatedAt @map("updated_at")
+  locations HouseholdLocation[]
+
+  @@map("mohallas")
+}
+
+/// Monthly totals per area, precomputed: kg per person, never a single home.
+model AreaStat {
+  id          String   @id @default(cuid())
+  level       String // MOHALLA, CITY, STATE, INDIA
+  key         String // mohalla id, "city|state", state code, "IN"
+  month       String // YYYY-MM
+  homes       Int
+  people      Int
+  kgPerPerson Float    @map("kg_per_person")
+  byCategory  String   @map("by_category") // JSON: kg per person per category
+  computedAt  DateTime @default(now()) @map("computed_at")
+
+  @@unique([level, key, month])
+  @@map("area_stats")
+}
+
+/// Cached forecast and air quality per H3 resolution-7 cell (Open-Meteo), refreshed hourly.
+model WeatherCell {
+  h3Area    String   @id @map("h3_area")
+  payload   String // JSON
+  fetchedAt DateTime @map("fetched_at")
+
+  @@map("weather_cells")
+}
+
+/// Blockchain v2: one Merkle root a day over shop registrations, removal decisions, scheme help and area totals.
+model AnchorBatch {
+  id        String       @id @default(cuid())
+  day       String       @unique // YYYY-MM-DD
+  root      String
+  leaves    Int
+  status    String       @default("PENDING") // PENDING, ANCHORED, FAILED
+  txHash    String?      @map("tx_hash")
+  createdAt DateTime     @default(now()) @map("created_at")
+  entries   AnchorLeaf[]
+
+  @@map("chain_batches") // not "anchor_batches": the engine's own table has that name in a shared Postgres
+}
+
+model AnchorLeaf {
+  id       String      @id @default(cuid())
+  batchId  String      @map("batch_id")
+  type     String // SALE, REMOVAL, SCHEME_HELP, AREA
+  refId    String      @map("ref_id")
+  leafHash String      @map("leaf_hash")
+  position Int
+  proof    String      @default("[]") // JSON array of sibling hashes up to the root
+  batch    AnchorBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([type, refId])
+  @@index([batchId])
+  @@map("chain_leaves")
+}
+
+/// A product a shop sells, from its CSV upload: the BEE label facts, price and a photo. Picked at the counter.
+model CatalogueItem {
+  id            String          @id @default(cuid())
+  merchantId    String          @map("merchant_id")
+  sku           String // the shop's own code, unique per shop
+  kind          String // APPLIANCE, VEHICLE
+  type          String // AC, Refrigerator, … / Car, TwoWheeler, …
+  brand         String
+  model         String
+  title         String
+  description   String?
+  priceInr      Int             @map("price_inr")
+  stars         Int?
+  inverter      Boolean         @default(false)
+  capacityTon   Float?          @map("capacity_ton")
+  ratedPowerW   Int?            @map("rated_power_w")
+  annualKwh     Float?          @map("annual_kwh")
+  labelYear     Int?            @map("label_year")
+  refrigerant   String?
+  fuel          String?
+  kmPerUnit     Float?          @map("km_per_unit")
+  batteryKwh    Float?          @map("battery_kwh")
+  modelYear     Int?            @map("model_year")
+  warrantyYears Int?            @map("warranty_years")
+  imageUrl      String?         @map("image_url") // public product photo: a Supabase Storage URL, or /api/catalogue/images/<id>
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  merchant      Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  image         CatalogueImage?
+  sales         MerchantSale[]
+
+  @@unique([merchantId, sku])
+  @@index([merchantId, kind])
+  @@map("catalogue_items")
+}
+
+/// Product photo (public: it's the shop's own marketing picture). Re-checked as a real image, metadata stripped.
+model CatalogueImage {
+  id        String        @id @default(cuid())
+  itemId    String        @unique @map("item_id")
+  mimeType  String        @map("mime_type")
+  sizeBytes Int           @map("size_bytes")
+  data      Bytes
+  createdAt DateTime      @default(now()) @map("created_at")
+  item      CatalogueItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("catalogue_images")
+}
+
+/// Help and complaints (शिकायत): a ticket number, a status, and the team's reply.
+model Grievance {
+  id            String    @id @default(cuid())
+  ticket        String    @unique // CW-GRV-2026-000123
+  userId        String?   @map("user_id")
+  householdId   String?   @map("household_id")
+  merchantId    String?   @map("merchant_id")
+  category      String // BILL, SHOP_ITEM, SCHEME, MOHALLA, PRIVACY, ACCOUNT, OTHER
+  subject       String
+  message       String
+  status        String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  response      String?
+  respondedById String?   @map("responded_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  resolvedAt    DateTime? @map("resolved_at")
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("grievances")
+}
+
+/// The website's notification centre (the bell). Every push also lands here, so nothing is missed without push.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  kind      String // SHOP, REMOVAL, SCHEME, HELP, REMINDER, MOHALLA, HEAT, SYSTEM
+  title     String
+  body      String
+  url       String
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+/// Machine translations of interface text, one row per language and source string (keyed by its SHA-256).
+model Translation {
+  id        String   @id @default(cuid())
+  lang      String
+  hash      String
+  source    String
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([lang, hash])
+  @@map("translations")
 }

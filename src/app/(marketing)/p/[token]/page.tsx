@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function PublicRecordPage({ params }: Props) {
   const { token } = await params;
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-  if (!rateLimit(`public-page:${ip}`, 60).ok) notFound();
+  if (!(await rateLimit(`public-page:${ip}`, 60)).ok) notFound();
 
   const householdId = await householdIdForPublicToken(token);
   if (!householdId) notFound();
@@ -61,7 +61,7 @@ export default async function PublicRecordPage({ params }: Props) {
                 <span className="label-caps">Latest complete month · {pb.current.label}</span>
                 <p className="mt-1 font-heading text-6xl font-medium leading-none tabular-nums">
                   {pb.current.totalKg}
-                  <span className="ml-2 font-mono text-sm text-ink-muted">kg CO₂</span>
+                  <span className="ml-2 font-mono text-sm text-ink-muted">kg CO₂e</span>
                 </p>
               </div>
               <dl className="flex gap-6 text-sm">

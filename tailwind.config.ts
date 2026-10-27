@@ -123,6 +123,17 @@ const config: Config = {
           text: "#2C4D37",
           border: "#BFCFB8",
         },
+        // Public-portal chrome (header, menu, footer): navy with saffron and India green accents
+        gov: {
+          navy: "#12284C",
+          deep: "#0B1B36",
+          blue: "#1F4E8C",
+          sky: "#E9EFF8",
+          saffron: "#F28C28",
+          saffronSoft: "#FDEBD9",
+          green: "#138808",
+          greenSoft: "#E3F1E1",
+        },
         // Data-viz categorical palette (muted, distinguishable, colour-blind aware order)
         viz: {
           electricity: "#B4532F",
@@ -147,8 +158,9 @@ const config: Config = {
         red: brick,
       },
       fontFamily: {
-        sans: ["var(--font-plex-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
-        heading: ["var(--font-newsreader)", "Georgia", "serif"],
+        sans: ["var(--font-plex-sans)", "var(--font-plex-deva)", "ui-sans-serif", "system-ui", "sans-serif"],
+        devanagari: ["var(--font-plex-deva)", "var(--font-plex-sans)", "sans-serif"],
+        heading: ["var(--font-newsreader)", "var(--font-plex-deva)", "Georgia", "serif"],
         mono: ["var(--font-plex-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       borderRadius: {

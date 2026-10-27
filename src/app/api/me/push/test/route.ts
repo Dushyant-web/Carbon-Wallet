@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser(req);
     if (!publicKey()) return NextResponse.json({ error: "Reminders aren't set up on this server yet." }, { status: 503 });
-    if (!rateLimit(`push-test:${user.id}`, 3).ok) return NextResponse.json({ error: "Try again in a minute." }, { status: 429 });
+    if (!(await rateLimit(`push-test:${user.id}`, 3)).ok) return NextResponse.json({ error: "Try again in a minute." }, { status: 429 });
     const sent = await sendToUser(user.id, { title: "Reminders are on", body: "This is how Carbon Wallet will remind you. Nothing else to do.", url: "/settings", tag: "test" });
     return NextResponse.json({ sent });
   } catch (err) {

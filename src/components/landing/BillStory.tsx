@@ -136,7 +136,7 @@ export function BillStory() {
               <p className="mt-3 font-heading text-6xl font-light tabular-nums leading-none">
                 {reduce ? "230.9" : <Counter value={kg} />}
               </p>
-              <p className="mt-1 text-sm text-canvas/70">kg CO₂</p>
+              <p className="mt-1 text-sm text-canvas/70">kg CO₂e</p>
               <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-canvas/15">
                 <motion.div className="h-full bg-secondary" style={{ width: share }} />
               </div>

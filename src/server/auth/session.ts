@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import type { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 
@@ -56,20 +57,21 @@ export async function userFromToken(token: string | undefined | null): Promise<S
   return { id, name, email, platformRole: asPlatformRole(platformRole) };
 }
 
-/** For route handlers. */
+/** For route handlers. Browsers send the cookie; the Android apps send the same token as a Bearer header. */
 export function getRequestUser(req: NextRequest | Request): Promise<SessionUser | null> {
-  const token =
+  const cookie =
     "cookies" in req && typeof (req as NextRequest).cookies?.get === "function"
       ? (req as NextRequest).cookies.get(SESSION_COOKIE)?.value
       : parseCookie(req.headers.get("cookie"), SESSION_COOKIE);
-  return userFromToken(token);
+  const bearer = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(req.headers.get("authorization") ?? "")?.[1];
+  return userFromToken(cookie ?? bearer);
 }
 
-/** For server components and layouts. */
-export async function getCurrentUser(): Promise<SessionUser | null> {
+/** For server components and layouts. Looked up once per request, however many layouts ask. */
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const store = await cookies();
   return userFromToken(store.get(SESSION_COOKIE)?.value);
-}
+});
 
 export async function destroySession(token: string | undefined | null) {
   if (!token) return;

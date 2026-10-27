@@ -47,6 +47,14 @@ PROMPT = (
 )
 
 
+
+def nvidia_key() -> str | None:
+    """NVIDIA_API_KEY, with its "nvapi-" start added if it was pasted without it."""
+    key = (os.getenv("NVIDIA_API_KEY") or "").strip()
+    if not key:
+        return None
+    return key if key.startswith("nvapi-") else f"nvapi-{key}"
+
 def _jpeg_data_url(png: bytes) -> str:
     img = Image.open(io.BytesIO(png)).convert("RGB")
     img.thumbnail((MAX_SIDE, MAX_SIDE * 1.5))

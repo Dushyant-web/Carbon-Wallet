@@ -1,3 +1,4 @@
+import { PETROL_KG_CO2E_PER_L as PETROL } from "@/lib/ghg";
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { db } from "@/server/db";
@@ -45,28 +46,24 @@ async function monthKg(month: string) {
 }
 
 describe("Phase 15: appliances & vehicles, fuel fill-ups, insights", () => {
-  it("adds, edits and deletes a vehicle with plain validation; viewers can't", async () => {
-    const bad = await addVehicle(req(`/api/households/${HH}/vehicles`, "POST", { name: "", fuel: "Water" }), p({ id: HH }));
-    expect(bad.status).toBe(400);
+  it("households can't add or delete items themselves; the owner can still change how one is used", async () => {
+    // items come from shops at the counter (phase 26); a viewer is refused before that
     expect((await addVehicle(req(`/api/households/${HH}/vehicles`, "POST", { name: "Scooty" }, "VIEWER"), p({ id: HH }))).status).toBe(403);
+    const add = await addVehicle(req(`/api/households/${HH}/vehicles`, "POST", { name: "Activa", type: "TwoWheeler", fuel: "Petrol" }), p({ id: HH }));
+    expect(add.status).toBe(403);
+    expect((await add.json()).code).toBe("ITEMS_BY_SHOPS");
+    expect((await addAppliance(req(`/api/households/${HH}/appliances`, "POST", { name: "Heater", type: "WaterHeater", powerKw: 2 }), p({ id: HH }))).status).toBe(403);
 
-    const res = await addVehicle(
-      req(`/api/households/${HH}/vehicles`, "POST", { name: "Activa", type: "TwoWheeler", fuel: "Petrol", kmPerUnit: 45, monthlyKm: 300, year: 2018 }),
-      p({ id: HH }),
-    );
-    expect(res.status).toBe(201);
-    const { vehicle } = await res.json();
-    expect(vehicle.year).toBe(2018);
-
+    const vehicle = await db.vehicle.create({
+      data: { householdId: HH, name: "Activa", type: "TwoWheeler", fuel: "Petrol", kmPerUnit: 45, monthlyKm: 300, year: 2018 },
+    });
     const edited = await editVehicle(req(`/x`, "PATCH", { monthlyKm: 450 }), p({ id: HH, vehicleId: vehicle.id }));
     expect((await edited.json()).vehicle.monthlyKm).toBe(450);
-    expect((await deleteVehicle(req(`/x`, "DELETE"), p({ id: HH, vehicleId: vehicle.id }))).status).toBe(200);
-    expect(await db.vehicle.count({ where: { id: vehicle.id } })).toBe(0);
-  });
-
-  it("validates appliance types and power", async () => {
-    const bad = await addAppliance(req(`/api/households/${HH}/appliances`, "POST", { name: "Heater", type: "Spaceship", powerKw: 2 }), p({ id: HH }));
-    expect(bad.status).toBe(400);
+    const del = await deleteVehicle(req(`/x`, "DELETE"), p({ id: HH, vehicleId: vehicle.id }));
+    expect(del.status).toBe(403);
+    expect((await del.json()).code).toBe("REMOVE_BY_REQUEST");
+    expect(await db.vehicle.count({ where: { id: vehicle.id } })).toBe(1);
+    await db.vehicle.delete({ where: { id: vehicle.id } });
   });
 
   it("a fuel fill-up is litres × 2.31 kg, replaces that car's km estimates for the month, and undoes cleanly", async () => {
@@ -84,7 +81,7 @@ describe("Phase 15: appliances & vehicles, fuel fill-ups, insights", () => {
     );
     expect(res.status).toBe(201);
     const out = await res.json();
-    expect(out.kgCo2e).toBeCloseTo(20 * 2.31, 2);
+    expect(out.kgCo2e).toBeCloseTo(20 * PETROL, 2);
     expect(out.coveredTrips).toBe(tripsBefore);
 
     // The month now counts the fill-up instead of the km trips
@@ -93,7 +90,7 @@ describe("Phase 15: appliances & vehicles, fuel fill-ups, insights", () => {
         where: { householdId: HH, activity: { type: "petrol_car" }, occurredOn: { gte: new Date("2026-03-01"), lt: new Date("2026-04-01") } },
       })
     ).reduce((s, e) => s + e.kgCo2e, 0);
-    expect(await monthKg("2026-03")).toBeCloseTo(before - tripKg + 20 * 2.31, 1);
+    expect(await monthKg("2026-03")).toBeCloseTo(before - tripKg + 20 * PETROL, 1);
 
     const list = await (await listFuel(req(`/x`), p({ id: HH }))).json();
     expect(list.fillUps[0]).toMatchObject({ quantity: 20, unit: "L", source: "PHOTO", estimatedKm: Math.round(20 * car!.kmPerUnit) });

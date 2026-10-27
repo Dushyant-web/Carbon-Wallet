@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id: householdId } = await params;
     const auth = await requireMembership(req, householdId, "data:read");
-    if (!rateLimit(`narrate:${auth.userId}`, 30, 10 * 60_000).ok) {
+    if (!(await rateLimit(`narrate:${auth.userId}`, 30, 10 * 60_000)).ok) {
       return NextResponse.json({ bullets: [], model: null, reason: "Too many requests, try again soon." }, { status: 429 });
     }
     const insights = await getInsights(householdId, req.nextUrl.searchParams.get("month"));

@@ -49,3 +49,16 @@ storage/
 private-bills/
 backend/tessdata/*.traineddata
 /.next-verify/
+
+# Postgres copy client (scripts/sqlite-to-postgres.ts)
+/prisma/postgres/client/
+# encrypted local file storage
+/storage/
+.tmp-pg/
+
+# scratch work kept on the external SSD
+/.tmp/
+/.next-prod/
+
+# Supabase connection for deploy scripts (not loaded by Next.js)
+.env.supabase

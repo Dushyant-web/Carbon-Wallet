@@ -110,7 +110,7 @@ export default function ActivitiesPage() {
                 <th className="label-caps pb-2 font-medium">Date</th>
                 <th className="label-caps pb-2 font-medium">What</th>
                 <th className="label-caps pb-2 text-right font-medium">Amount</th>
-                <th className="label-caps pb-2 text-right font-medium">CO₂</th>
+                <th className="label-caps pb-2 text-right font-medium">CO₂e</th>
                 <th className="label-caps pb-2 pl-6 font-medium">Where it came from</th>
               </tr>
             </thead>

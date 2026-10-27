@@ -38,7 +38,7 @@ function PhoneScreen({ open }: { open: boolean }) {
         <div className="mt-4 rounded-lg bg-primary p-3 text-canvas">
           <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-canvas/60">March 2026</p>
           <p className="font-heading text-3xl font-light leading-none">286</p>
-          <p className="text-[10px] text-canvas/70">kg CO₂ · 72 kg per person</p>
+          <p className="text-[10px] text-canvas/70">kg CO₂e · 72 kg per person</p>
         </div>
         <div className="mt-3 space-y-1.5">
           {[

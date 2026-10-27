@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
 import { db } from "@/server/db";
 
 export interface ForecastPoint {
@@ -36,7 +37,7 @@ export interface ForecastResult {
 }
 
 // CEA CO2 Baseline Database v22.0, FY 2025-26 all-India weighted average.
-const GRID_EF = 0.675;
+const GRID_EF = GRID_KG_CO2E_PER_KWH; // kg CO₂e per kWh, all gases
 // India GHG Program 2015 road factors (incl. 10% real-world uplift), kg CO2 per vehicle-km.
 const CAR_KG_PER_KM: Record<string, number> = { Petrol: 0.14, Diesel: 0.21, CNG: 0.068, Hybrid: 0.1 };
 const EV_KWH_PER_KM = 0.15; // assumption: small Indian EV, plug-to-wheel

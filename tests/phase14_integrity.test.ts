@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect } from "vitest";
 import { db } from "@/server/db";
 import { currentMonthIST, resolveReportingPeriod, shiftMonth } from "@/server/period";
@@ -26,7 +27,7 @@ describe("Phase 14: number integrity", () => {
     const recs = await computeRecommendations("hh_01_sharma");
     const setpoint = recs.find((r) => r.action.includes("24 °C"))!;
     // No bills in the seed: largest AC is 1.5 kW rated at 5.5 h/day → 247.5 kWh/month; 2 °C × 6% = 29.7 kWh
-    expect(setpoint.kgSaved).toBeCloseTo(1.5 * 5.5 * 30 * 0.06 * 2 * 0.675, 1);
+    expect(setpoint.kgSaved).toBeCloseTo(1.5 * 5.5 * 30 * 0.06 * 2 * GRID, 1);
     expect(setpoint.description).toContain("1.5 kW (rated)");
     const car = recs.find((r) => r.category === "Transport")!;
     expect(car.kgSaved).toBeCloseTo(380 * 0.2 * (0.14 - 0.025), 1);

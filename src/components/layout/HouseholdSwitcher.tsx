@@ -96,7 +96,7 @@ export function HouseholdSwitcher({ onOpenCreate }: { onOpenCreate?: () => void 
             )}
           </div>
           <span className="hidden text-[11px] text-ink-muted sm:block">
-            {activeHh.city}, {activeHh.state} • {activeHh.size} people • {activeHh.currentEmissions} kg CO₂ a month
+            {activeHh.city}, {activeHh.state} • {activeHh.size} people • {activeHh.currentEmissions} kg CO₂e a month
           </span>
         </div>
         {canSwitch && <ChevronDown className="ml-2 h-4 w-4 text-ink-muted" />}
@@ -146,7 +146,7 @@ export function HouseholdSwitcher({ onOpenCreate }: { onOpenCreate?: () => void 
                     <div className="flex flex-col">
                       <span className="text-xs font-bold leading-tight">{h.name}</span>
                       <span className="text-[11px] text-ink-muted">
-                        {h.city} • {h.currentEmissions} kg CO₂
+                        {h.city} • {h.currentEmissions} kg CO₂e
                       </span>
                     </div>
                   </div>

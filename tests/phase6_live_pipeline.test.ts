@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { NextRequest } from "next/server";
 import { db } from "@/server/db";
@@ -107,21 +108,22 @@ describe("Phase 6: Live Pipeline, Assets, Members & Onboarding", () => {
 
     const data = await res.json();
     expect(data.activity).toBeDefined();
-    expect(data.emissionEvent.kgCo2e).toBe(13.5);
+    expect(data.emissionEvent.kgCo2e).toBe(Number((20 * GRID).toFixed(3)));
 
     // 3. Verify total and category breakdown updated live
     const updatedSummary = await db.monthlySummary.findUnique({
       where: { householdId_month: { householdId, month: "2026-03" } },
     });
 
-    expect(updatedSummary!.totalKg).toBe(13.5);
+    expect(updatedSummary!.totalKg).toBe(Number((20 * GRID).toFixed(2)));
     const updatedBreakdown = JSON.parse(updatedSummary!.byCategory);
-    expect(updatedBreakdown.Electricity).toBe(13.5);
+    expect(updatedBreakdown.Electricity).toBe(Number((20 * GRID).toFixed(2)));
 
     // Score is live
     expect(updatedSummary!.score).toBeDefined();
   });
 
+  // Households can't add items (shops register them, phase 26): the POST is refused and the item comes from the seed path
   it("adds and retrieves appliances for a household", async () => {
     const payload = {
       name: "Guest Bedroom Inverter AC",
@@ -141,7 +143,8 @@ describe("Phase 6: Live Pipeline, Assets, Members & Onboarding", () => {
     });
 
     const postRes = await postAppliance(postReq, { params: Promise.resolve({ id: householdId }) });
-    expect(postRes.status).toBe(201);
+    expect(postRes.status).toBe(403);
+    await db.appliance.create({ data: { householdId, ...payload } });
 
     const getReq = new NextRequest(`http://localhost:3000/api/households/${householdId}/appliances`, {
       headers: { "x-user-id": ownerUserId },
@@ -172,7 +175,8 @@ describe("Phase 6: Live Pipeline, Assets, Members & Onboarding", () => {
     });
 
     const postRes = await postVehicle(postReq, { params: Promise.resolve({ id: householdId }) });
-    expect(postRes.status).toBe(201);
+    expect(postRes.status).toBe(403);
+    await db.vehicle.create({ data: { householdId, ...payload } });
 
     const getReq = new NextRequest(`http://localhost:3000/api/households/${householdId}/vehicles`, {
       headers: { "x-user-id": ownerUserId },

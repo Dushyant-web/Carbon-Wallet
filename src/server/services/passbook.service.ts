@@ -1,3 +1,4 @@
+import { engineHeaders } from "@/server/engineAuth";
 import { db } from "@/server/db";
 import { ensureHouseholdIdentity } from "./identity.service";
 
@@ -42,10 +43,11 @@ async function anchoringStatus(householdId: string): Promise<{ rows: EngineStatu
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 800);
   try {
-    const res = await fetch(`${base}/api/v1/statements?household_ref=${encodeURIComponent(householdId)}`, {
+    const url = `${base}/api/v1/statements?household_ref=${encodeURIComponent(householdId)}`;
+    const res = await fetch(url, {
       signal: controller.signal,
       cache: "no-store",
-      headers: { "x-engine-key": process.env.ENGINE_API_KEY ?? "" }, // the engine only answers this server
+      headers: engineHeaders("GET", url), // signed: the engine only answers this server
     });
     if (!res.ok) return { rows: [], reachable: false };
     return { rows: (await res.json()) as EngineStatus[], reachable: true };

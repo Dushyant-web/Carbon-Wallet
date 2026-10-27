@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: householdId } = await params;
     const auth = await requireMembership(req, householdId, "activity:create");
-    if (!rateLimit(`fuel-read:${auth.userId}`, 20, 10 * 60_000).ok) {
+    if (!(await rateLimit(`fuel-read:${auth.userId}`, 20, 10 * 60_000)).ok) {
       return NextResponse.json({ error: "Too many photos. Try again in a few minutes." }, { status: 429 });
     }
     const form = await req.formData().catch(() => null);

@@ -117,7 +117,7 @@ export default function FuelPage() {
       return;
     }
     setSaved(
-      `Saved: ${body.kgCo2e} kg CO₂.${body.coveredTrips ? ` ${body.coveredTrips} km-based trip estimates for this car and month now stop counting, so nothing is counted twice.` : ""}`,
+      `Saved: ${body.kgCo2e} kg CO₂e.${body.coveredTrips ? ` ${body.coveredTrips} km-based trip estimates for this car and month now stop counting, so nothing is counted twice.` : ""}`,
     );
     setReading(null);
     setForm({ quantity: "", amount: "", rate: "", date: today(), fromPhoto: false });
@@ -138,7 +138,7 @@ export default function FuelPage() {
       <PageIntro
         section="Your home"
         title="Add fuel"
-        what="Every litre of fuel burned makes a fixed amount of CO₂ (petrol 2.31 kg, diesel 2.68 kg, CNG 2.75 kg per kg). So a fill-up is the most accurate way to count your car."
+        what="Every litre of fuel burned makes a fixed amount of greenhouse gas (in CO₂e: petrol 2.37 kg, diesel 2.72 kg, CNG 2.92 kg per kg). So a fill-up is the most accurate way to count your car."
         doThis="Snap the pump's display (Amount, Volume, Rate) or the printed receipt. Check the numbers, then save."
         get="Exact CO₂ for that fill-up, about how many km it covers for your car, and a car total in Insights."
       />
@@ -246,7 +246,7 @@ export default function FuelPage() {
               <div className="bg-primary px-5 py-4 text-canvas-card">
                 <span className="label-caps text-canvas-card/60">This fill-up</span>
                 <p className="mt-1 font-heading text-3xl tabular-nums">
-                  {kg.toFixed(1)} <span className="text-base text-canvas-card/70">kg CO₂</span>
+                  {kg.toFixed(1)} <span className="text-base text-canvas-card/70">kg CO₂e</span>
                 </p>
                 {km ? <p className="mt-1 text-[12px] text-canvas-card/70">Enough for about {km} km in your {vehicle.name}</p> : null}
               </div>
@@ -277,7 +277,7 @@ export default function FuelPage() {
                   <th className="label-caps pb-2 font-medium">Vehicle</th>
                   <th className="label-caps pb-2 text-right font-medium">Fuel</th>
                   <th className="label-caps pb-2 text-right font-medium">Paid</th>
-                  <th className="label-caps pb-2 text-right font-medium">CO₂</th>
+                  <th className="label-caps pb-2 text-right font-medium">CO₂e</th>
                   <th className="pb-2" />
                 </tr>
               </thead>

@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db import init_db
 from app.engine import factors
 from app import config  # noqa: F401  (loads the shared .env)
-from app.routers import bills, engine, insights, statements, weather
+import os
+
+from app.routers import bills, engine, events, insights, ml, statements, weather
+from app.signing import EngineSignatureMiddleware
 
 
 @asynccontextmanager
@@ -22,12 +25,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Browsers reach the engine only through the website (same origin); list extra origins in CORS_ORIGINS.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()],
+    allow_methods=["GET", "POST"],
+    allow_headers=["content-type"],
 )
+app.add_middleware(EngineSignatureMiddleware)
 
 
 @app.get("/api/v1/health")
@@ -38,5 +43,7 @@ def health() -> dict:
 app.include_router(engine.router, prefix="/api/v1")
 app.include_router(statements.router, prefix="/api/v1")
 app.include_router(bills.router, prefix="/api/v1")
+app.include_router(events.router, prefix="/api/v1")
 app.include_router(weather.router, prefix="/api/v1")
 app.include_router(insights.router, prefix="/api/v1")
+app.include_router(ml.router, prefix="/api/v1")

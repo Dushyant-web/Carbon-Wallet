@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ITEMS_BY_SHOPS } from "@/lib/assets";
 import { db } from "@/server/db";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
-import { refreshRecommendations } from "@/server/services/recommendation.service";
-import { VehicleSchema } from "@/lib/assets";
 
 
 export async function GET(
@@ -24,6 +23,7 @@ export async function GET(
   }
 }
 
+/** Households don't add items: the shop that sells one registers it at the counter (merchant.service.ts). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,23 +31,8 @@ export async function POST(
   try {
     const { id: householdId } = await params;
     await requireMembership(req, householdId, "asset:create");
-
-    const body = await req.json();
-    const data = VehicleSchema.parse(body);
-
-    const vehicle = await db.vehicle.create({
-      data: {
-        householdId,
-        ...data,
-      },
-    });
-
-    await refreshRecommendations(householdId);
-    return NextResponse.json({ vehicle }, { status: 201 });
+    return NextResponse.json({ error: ITEMS_BY_SHOPS, code: "ITEMS_BY_SHOPS" }, { status: 403 });
   } catch (err) {
-    if (err && typeof err === "object" && "name" in err && err.name === "ZodError") {
-      return NextResponse.json({ error: "Validation Error", details: err }, { status: 400 });
-    }
     return handleAuthError(err);
   }
 }

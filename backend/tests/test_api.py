@@ -14,7 +14,7 @@ def engine_key(monkeypatch):
 
 def test_full_statement_lifecycle():
     with TestClient(app) as client:
-        assert client.get("/api/v1/health").json()["grid_factor"] == 0.675
+        assert client.get("/api/v1/health").json()["grid_factor"] == 0.6781
 
         cal = client.post(
             "/api/v1/calibration",
@@ -26,7 +26,7 @@ def test_full_statement_lifecycle():
             },
         ).json()
         assert cal["ac_kw"] == 1.29
-        assert cal["latest_bill"]["ac_kg"] == 162.0
+        assert cal["latest_bill"]["ac_kg"] == 162.7  # 240 kWh x 0.6781 kg CO2e
 
         issued = client.post(
             "/api/v1/statements",

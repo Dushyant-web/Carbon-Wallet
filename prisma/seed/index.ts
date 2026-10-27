@@ -7,11 +7,21 @@ import { scoreService } from "@/server/services/score.service";
 import { hashPassword } from "@/server/auth/password";
 import { ensureHouseholdIdentity } from "@/server/services/identity.service";
 import { refreshRecommendations } from "@/server/services/recommendation.service";
+import { seedAreas } from "./areas";
+import { seedCatalogues } from "./catalogue";
+import { seedNotifications } from "./notifications";
 
 // Demo logins (seed data only): every seeded member shares DEMO_PASSWORD; one platform admin.
 const DEMO_PASSWORD = "CarbonDemo#2026";
 const DEMO_LOGIN_HOUSEHOLD = "Sharma Residence";
 const ADMIN = { name: "Platform Admin", email: "admin@carbonwallet.in", password: "AdminDemo#2026" };
+// Demo shops: two approved (one per kind of goods) and one still waiting for an admin. Names are made up.
+export const SHOP_PASSWORD = "ShopDemo#2026";
+export const DEMO_SHOPS = [
+  { name: "Ravi Kumar", email: "counter@demo-appliances.example.com", businessName: "Demo Appliances", gstin: "09AAACD1234E1Z5", city: "Noida", state: "Uttar Pradesh", sells: "APPLIANCES", status: "APPROVED" },
+  { name: "Simran Kaur", email: "sales@demo-motors.example.com", businessName: "Demo Motors", gstin: "07AAACD5678F1Z2", city: "New Delhi", state: "Delhi", sells: "VEHICLES", status: "APPROVED" },
+  { name: "Arif Shaikh", email: "owner@new-shop.example.com", businessName: "New Shop Electronics", gstin: null, city: "Pune", state: "Maharashtra", sells: "BOTH", status: "PENDING" },
+] as const;
 
 export async function seedDatabase() {
   console.log("🌱 Starting CarbonOS calibrated database seeding...");
@@ -22,6 +32,21 @@ export async function seedDatabase() {
     update: { platformRole: "ADMIN", status: "ACTIVE", passwordHash: await hashPassword(ADMIN.password) },
     create: { name: ADMIN.name, email: ADMIN.email, platformRole: "ADMIN", passwordHash: await hashPassword(ADMIN.password) },
   });
+
+  const shopHash = await hashPassword(SHOP_PASSWORD);
+  for (const shop of DEMO_SHOPS) {
+    const user = await db.user.upsert({
+      where: { email: shop.email },
+      update: { platformRole: "MERCHANT", status: "ACTIVE", passwordHash: shopHash },
+      create: { name: shop.name, email: shop.email, platformRole: "MERCHANT", passwordHash: shopHash },
+    });
+    const details = { businessName: shop.businessName, gstin: shop.gstin, city: shop.city, state: shop.state, sells: shop.sells, status: shop.status };
+    await db.merchant.upsert({
+      where: { userId: user.id },
+      update: { ...details, reviewedAt: shop.status === "APPROVED" ? new Date() : null },
+      create: { userId: user.id, ...details, reviewedAt: shop.status === "APPROVED" ? new Date() : null },
+    });
+  }
 
   // 1. Seed Factor Registry
   console.log("⚡ Seeding versioned Indian emission factor registry...");
@@ -115,7 +140,9 @@ export async function seedDatabase() {
       });
     }
 
-    // Upsert Appliances
+    // Upsert Appliances (and forget what demo shops registered here, so a reseed starts clean)
+    await db.merchantSale.deleteMany({ where: { householdId: household.id } });
+    await db.merchantScan.deleteMany({ where: { householdId: household.id } });
     await db.appliance.deleteMany({ where: { householdId: household.id } });
     for (const app of profile.appliances) {
       await db.appliance.create({
@@ -281,6 +308,10 @@ export async function seedDatabase() {
   }
   // Demo-only: a fixed, documented token so the landing page QR always opens a real record.
   await db.household.updateMany({ where: { name: DEMO_LOGIN_HOUSEHOLD }, data: { publicToken: "sharma-demo" } });
+  // Schemes catalogue, demo places, mohallas and area totals; the demo shops' product catalogues
+  await seedAreas();
+  await seedCatalogues();
+  await seedNotifications();
 
   console.log("✅ Seed completed successfully with 10 calibrated households!");
   console.log(`🔑 Demo user: arjun.sharma@example.com / ${DEMO_PASSWORD}  ·  Admin: ${ADMIN.email} / ${ADMIN.password}`);

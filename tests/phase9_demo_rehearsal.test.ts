@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect } from "vitest";
 import { GET as getOverview } from "@/app/api/households/[id]/overview/route";
 import { POST as postActivity } from "@/app/api/households/[id]/activities/route";
@@ -23,7 +24,7 @@ let summaryBefore: { totalKg: number; byCategory: string; score: number } | null
       expect(data.household.state).toBe("UP");
 
       // Baseline monthly emissions
-      expect(data.kpi.totalEmissions).toBe(286);
+      expect(data.kpi.totalEmissions).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
       expect(data.kpi.trendPct).toBe(-8.4);
 
       // Top contributor is Electricity / AC cooling
@@ -57,7 +58,7 @@ let summaryBefore: { totalKg: number; byCategory: string; score: number } | null
       expect(data.vehicles.some((v: { fuel: string }) => v.fuel === "Electric")).toBe(true);
 
       // Telemetry visibly distinct from Sharma
-      expect(data.kpi.totalEmissions).not.toBe(286);
+      expect(data.kpi.totalEmissions).not.toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
       expect(data.household.city).toBe("Bengaluru");
     });
   });
@@ -121,7 +122,7 @@ let summaryBefore: { totalKg: number; byCategory: string; score: number } | null
       createdActivityId = postData.activity.id;
 
       // 6 h * 1.5 kW = 9.0 kWh * 0.675 kg/kWh (CEA v22) = 6.075 kg
-      expect(postData.emissionEvent.kgCo2e).toBe(6.075);
+      expect(postData.emissionEvent.kgCo2e).toBe(Number((9 * GRID).toFixed(3)));
 
       // Monthly rollup updated: 286 + 6.075 = 292.1 kg
       expect(Math.round(postData.monthlySummary.totalKg * 10) / 10).toBe(292.1);
@@ -150,7 +151,7 @@ let summaryBefore: { totalKg: number; byCategory: string; score: number } | null
       const checkReq = new NextRequest("http://localhost:3000/api/households/hh_01_sharma/overview");
       const checkRes = await getOverview(checkReq, { params: Promise.resolve({ id: "hh_01_sharma" }) });
       const checkData = await checkRes.json();
-      expect(checkData.kpi.totalEmissions).toBe(286);
+      expect(checkData.kpi.totalEmissions).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
     });
   });
 

@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { db } from "@/server/db";
 import { seedEmissionFactors } from "@/server/factors/registry";
@@ -76,7 +77,7 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
       },
     });
     expect(upGrid).toBeDefined();
-    expect(upGrid?.kgCo2ePerUnit).toBe(0.675);
+    expect(upGrid?.kgCo2ePerUnit).toBe(GRID);
     expect(upGrid?.source).toContain("CEA");
 
     const kaGrid = await db.emissionFactor.findUnique({
@@ -88,7 +89,7 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
         },
       },
     });
-    expect(kaGrid?.kgCo2ePerUnit).toBe(0.675);
+    expect(kaGrid?.kgCo2ePerUnit).toBe(GRID);
 
     const mhGrid = await db.emissionFactor.findUnique({
       where: {
@@ -99,10 +100,10 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
         },
       },
     });
-    expect(mhGrid?.kgCo2ePerUnit).toBe(0.675);
+    expect(mhGrid?.kgCo2ePerUnit).toBe(GRID);
   });
 
-  it("Done when criterion: AC 6 h gives the expected kg (6h @ 1.5 kW = 9 kWh * 0.675 = 6.075 kg CO2e)", async () => {
+  it("Done when criterion: AC 6 h gives the expected kg (6 h @ 1.5 kW = 9 kWh × 0.6781 = 6.103 kg CO2e)", async () => {
     // Logging AC for 6 hours in Uttar Pradesh (1.5 kW default for standard 1.5-Ton inverter AC)
     const result = await emissionService.calculateAndRecord(sharmaHouseholdId, {
       category: "Electricity",
@@ -117,13 +118,13 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
 
     expect(result.computation.effectiveQuantity).toBe(9.0); // 6 h * 1.5 kW = 9 kWh
     expect(result.computation.effectiveUnit).toBe("kWh");
-    expect(result.computation.factorValue).toBe(0.675);
-    expect(result.computation.kgCo2e).toBe(6.075); // 9 * 0.675 (CEA v22)
-    expect(result.emissionEvent.kgCo2e).toBe(6.075);
-    expect(result.monthlySummary.totalKg).toBe(6.08);
+    expect(result.computation.factorValue).toBe(GRID);
+    expect(result.computation.kgCo2e).toBe(Number((9 * GRID).toFixed(3))); // 9 kWh × 0.6781 kg CO₂e (CEA v22 + CH₄, N₂O)
+    expect(result.emissionEvent.kgCo2e).toBe(Number((9 * GRID).toFixed(3)));
+    expect(result.monthlySummary.totalKg).toBe(6.1);
 
     const parsedBreakdown = JSON.parse(result.monthlySummary.byCategory);
-    expect(parsedBreakdown.Electricity).toBe(6.08);
+    expect(parsedBreakdown.Electricity).toBe(6.1);
   });
 
   it("gives the same kg for the same activity in every state (single national grid)", async () => {
@@ -138,13 +139,13 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
       source: "MANUAL",
     });
 
-    // 9 kWh * 0.675 = 6.075 kg CO2e
-    expect(resultKhan.computation.kgCo2e).toBe(6.075);
-    expect(resultKhan.emissionEvent.kgCo2e).toBe(6.075);
+    // 9 kWh × 0.6781 = 6.103 kg CO2e
+    expect(resultKhan.computation.kgCo2e).toBe(Number((9 * GRID).toFixed(3)));
+    expect(resultKhan.emissionEvent.kgCo2e).toBe(Number((9 * GRID).toFixed(3)));
   });
 
   it("enforces category drill-down: AC is part of Electricity and category totals sum to household total", async () => {
-    // Add petrol car travel to Sharma (20 km * 0.165 = 3.30 kg)
+    // Add petrol car travel to Sharma (20 km × 0.169 kg CO₂e = 3.38 kg)
     await emissionService.calculateAndRecord(sharmaHouseholdId, {
       category: "Transport",
       type: "petrol_car",
@@ -154,7 +155,7 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
       source: "MANUAL",
     });
 
-    // Add another electricity activity (refrigerator & lighting: 5 kWh * 0.675 = 3.375 kg)
+    // Add another electricity activity (refrigerator & lighting: 5 kWh × 0.6781 = 3.39 kg CO₂e)
     const latest = await emissionService.calculateAndRecord(sharmaHouseholdId, {
       category: "Electricity",
       type: "grid_electricity",
@@ -167,9 +168,9 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
     const summary = latest.monthlySummary;
     const breakdown = JSON.parse(summary.byCategory);
 
-    // Electricity total = 6.08 (AC) + 3.38 (General) = 9.46 kg (rounded per event)
-    expect(breakdown.Electricity).toBe(9.46);
-    expect(breakdown.Transport).toBe(3.30);
+    // Electricity total = 6.10 (AC) + 3.39 (General) = 9.49 kg CO₂e (rounded per event)
+    expect(breakdown.Electricity).toBe(9.49);
+    expect(breakdown.Transport).toBe(3.38);
 
     // Sum of categories must exactly equal monthly total
     const sumCategories = Object.values(breakdown as Record<string, number>).reduce(
@@ -177,15 +178,15 @@ describe("Phase 1: Factor Registry & Emission Service", () => {
       0
     );
     expect(Number(sumCategories.toFixed(2))).toBe(summary.totalKg);
-    expect(summary.totalKg).toBe(12.76);
+    expect(summary.totalKg).toBe(12.87);
   });
 
   it("enforces tenant isolation: activity in Sharma does not affect Khan", async () => {
     const khanSummary = await summaryRepository.getMonthlySummary(khanHouseholdId, "2026-03");
-    expect(khanSummary?.totalKg).toBe(6.08);
+    expect(khanSummary?.totalKg).toBe(6.1);
 
     const sharmaSummary = await summaryRepository.getMonthlySummary(sharmaHouseholdId, "2026-03");
-    expect(sharmaSummary?.totalKg).toBe(12.76);
+    expect(sharmaSummary?.totalKg).toBe(12.87);
 
     const khanActivities = await activityRepository.listActivities(khanHouseholdId);
     expect(khanActivities.length).toBe(1);

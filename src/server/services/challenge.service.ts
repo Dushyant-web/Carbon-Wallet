@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
 import { db } from "@/server/db";
 
 /**
@@ -8,7 +9,7 @@ import { db } from "@/server/db";
  * appears if the home has what it needs (no car → no car-free day). One check-in per day, India time.
  */
 
-const GRID_EF = 0.675; // kg CO2 per kWh, CEA 2025-26
+const GRID_EF = GRID_KG_CO2E_PER_KWH; // kg CO₂e per kWh (CEA 2025-26 + CH₄, N₂O)
 const FUEL_EF: Record<string, number> = { Petrol: 2.31, Diesel: 2.68, CNG: 2.75, Hybrid: 2.31 };
 const METRO_KG_PER_KM = 0.025; // Delhi Metro, TERI
 const SETPOINT_SAVING = 0.12; // 22 → 24 °C ≈ 2 × 6% less cooling energy (BEE)
@@ -46,7 +47,7 @@ type Def = {
 const kwhSaving = (kwh: number, c: Ctx, math: string): Saving => ({
   kgPerDay: Math.round(kwh * GRID_EF * 100) / 100,
   inrPerDay: Math.round(kwh * c.tariff * 10) / 10,
-  math: `${math} = ${kwh.toFixed(2)} kWh × 0.675 kg`,
+  math: `${math} = ${kwh.toFixed(2)} kWh × ${GRID_EF} kg CO₂e`,
 });
 
 export const CATALOG: Def[] = [

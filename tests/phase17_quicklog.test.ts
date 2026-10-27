@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID, LPG_KG_CO2E_PER_KG as LPG } from "@/lib/ghg";
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import { db } from "@/server/db";
@@ -47,7 +48,7 @@ describe("Phase 17: quick log", () => {
     const before = await db.activity.count({ where: { householdId: "hh_03_verma" } });
     const lpg = await post("hh_03_verma", { ...toActivity({ kind: "lpg", cylinders: 1, cylinderKg: 14.2 }), occurredOn: "2023-05-10T12:00:00Z" }, true);
     expect(lpg.status).toBe(200);
-    expect((await lpg.json()).kgCo2e).toBeCloseTo(14.2 * 2.98, 3);
+    expect((await lpg.json()).kgCo2e).toBeCloseTo(14.2 * LPG, 3);
     const bus = await post("hh_03_verma", { ...toActivity({ kind: "transit", mode: "bus", km: 10 }), occurredOn: "2023-05-10T12:00:00Z" }, true);
     expect(bus.status).toBe(200);
     expect((await bus.json()).kgCo2e).toBeCloseTo(0.152, 3);
@@ -93,9 +94,9 @@ describe("Phase 17: quick log", () => {
     // net metering: 350 kWh imported, 150 kWh of rooftop solar exported, 200 kWh billed
     await billService.confirm({ householdId: "hh_05_singh", userId: owner, periodStart: "2023-09-01", periodEnd: "2023-10-01", kwh: 200, importKwh: 350, exportKwh: 150 });
     const s = await summary("hh_05_singh", "2023-09");
-    expect(JSON.parse(s!.byCategory).Electricity).toBeCloseTo(350 * 0.675, 1);
+    expect(JSON.parse(s!.byCategory).Electricity).toBeCloseTo(350 * GRID, 1);
     // an import smaller than the billed units can't be right, so the billed units are used
     await billService.confirm({ householdId: "hh_05_singh", userId: owner, periodStart: "2023-11-01", periodEnd: "2023-12-01", kwh: 200, importKwh: 120 });
-    expect(JSON.parse((await summary("hh_05_singh", "2023-11"))!.byCategory).Electricity).toBeCloseTo(200 * 0.675, 1);
+    expect(JSON.parse((await summary("hh_05_singh", "2023-11"))!.byCategory).Electricity).toBeCloseTo(200 * GRID, 1);
   });
 });

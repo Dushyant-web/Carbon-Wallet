@@ -8,7 +8,7 @@ import { exportUserData } from "@/server/services/privacy.service";
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser(req);
-    if (!rateLimit(`export:${user.id}`, 5, 60 * 60_000).ok) return NextResponse.json({ error: "You can download your data a few times an hour. Try again later." }, { status: 429 });
+    if (!(await rateLimit(`export:${user.id}`, 5, 60 * 60_000)).ok) return NextResponse.json({ error: "You can download your data a few times an hour. Try again later." }, { status: 429 });
     const data = await exportUserData(user.id, req.nextUrl.searchParams.get("files") === "1");
     const membership = await db.membership.findFirst({ where: { userId: user.id }, select: { householdId: true } });
     if (membership) await db.auditLog.create({ data: { householdId: membership.householdId, userId: user.id, action: "privacy.export", entity: "User", details: "downloaded their data" } });

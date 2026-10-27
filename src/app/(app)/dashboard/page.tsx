@@ -1,23 +1,27 @@
 "use client";
 
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
+import type { Lang } from "@/lib/languages";
 import React, { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ArrowRight, Camera, CheckCircle2, CreditCard, Landmark, LayoutGrid, MapPinned, TrendingDown, TrendingUp, TriangleAlert, XCircle } from "lucide-react";
 import { useAppStore } from "@/store";
 import { useHouseholdOverview, useHouseholds } from "@/hooks/useHousehold";
 import { Welcome } from "@/components/dashboard/Welcome";
 import { usePermissions } from "@/hooks/usePermissions";
-import { KpiCard } from "@/components/ui/KpiCard";
-import { SectionHeading } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/states/ErrorState";
-import { categoryColor } from "@/lib/viz";
-import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
-import { GoalCard } from "@/components/dashboard/GoalCard";
-import { CheckInPrompt } from "@/components/dashboard/CheckInPrompt";
 import { HomeNudges } from "@/components/dashboard/HomeNudges";
+import { NextMonthForecast } from "@/components/dashboard/NextMonthForecast";
+import { GasBreakdown } from "@/components/dashboard/GasBreakdown";
+import { useUiPrefs } from "@/components/providers/UiPrefsProvider";
+import { categoryColor } from "@/lib/viz";
+import { ALLOWANCE_SOURCE, STATUS_WORDS, kgToAcDays, stateInfo, statusFor, type CarbonStatus } from "@/lib/allowance";
+import { categoryWords, inr, monthWords, shortMonth } from "@/lib/plainWords";
 
 type TrendPoint = {
   month: string;
@@ -29,7 +33,13 @@ type TrendPoint = {
   isReporting: boolean;
 };
 
-export default function OverviewPage() {
+const TONE: Record<CarbonStatus, { bar: string; soft: string; text: string; border: string; Icon: typeof CheckCircle2 }> = {
+  GREEN: { bar: "bg-success", soft: "bg-success-subtle", text: "text-success-text", border: "border-success-border", Icon: CheckCircle2 },
+  AMBER: { bar: "bg-warning", soft: "bg-warning-subtle", text: "text-warning-text", border: "border-warning-border", Icon: TriangleAlert },
+  RED: { bar: "bg-critical", soft: "bg-critical-subtle", text: "text-critical-text", border: "border-critical-border", Icon: XCircle },
+};
+
+export default function HomePage() {
   const { activeHouseholdId, demoRole } = useAppStore();
   const households = useHouseholds();
   const { data, isLoading, error } = useHouseholdOverview(activeHouseholdId);
@@ -43,25 +53,32 @@ export default function OverviewPage() {
     enabled: !!activeHouseholdId,
     retry: false,
   });
+  const schemes = useQuery({
+    queryKey: ["household", activeHouseholdId, "schemes"],
+    queryFn: async () => {
+      const res = await fetch(`/api/households/${activeHouseholdId}/schemes`, { headers: { "x-demo-role": demoRole } });
+      if (!res.ok) throw new Error("schemes unavailable");
+      return (await res.json()) as { forYou: { slug: string }[] };
+    },
+    enabled: !!activeHouseholdId,
+  });
   const { can } = usePermissions();
+  const { lang, t } = useUiPrefs();
   const queryClient = useQueryClient();
-  const [appliedAction, setAppliedAction] = useState(false);
-  const [commitError, setCommitError] = useState<string | null>(null);
+  const [committed, setCommitted] = useState(false);
 
-  if (households.data && (households.data.households ?? []).length === 0) {
-    return <Welcome />;
-  }
+  if (households.data && (households.data.households ?? []).length === 0) return <Welcome />;
 
-  if (isLoading) {
+  // "no data and no error yet" is loading too: that is what the server renders, so the first paint matches
+  if (isLoading || (!data && !error)) {
     return (
-      <div className="flex flex-col gap-8">
-        <Skeleton className="h-16 w-96" />
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-8">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-10 w-72" />
+        <Skeleton className="h-64 w-full" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
         </div>
-        <Skeleton className="h-72 w-full" />
       </div>
     );
   }
@@ -69,337 +86,305 @@ export default function OverviewPage() {
   if (error || !data) {
     return (
       <ErrorState
-        title="Couldn't load this household"
-        message="The overview request failed. Check that the dev server and database are running, or pick another household."
+        title={t("Couldn't load your home", "आपके घर की जानकारी नहीं खुली")}
+        message={t("Please check your internet and try again, or pick another home at the top.", "इंटरनेट देखें और फिर से कोशिश करें।")}
       />
     );
   }
 
-  const { household, kpi, trendHistory, categoryBreakdown, nextBestAction, members, vehicles, solar, period, provenance } = data;
+  const { household, kpi, trendHistory, categoryBreakdown, nextBestAction, period, access } = data;
   const trend: TrendPoint[] = trendHistory || [];
-  const maxKg = Math.max(...trend.map((p) => p.totalKg ?? 0), 1);
-  const priorPoint = trend[trend.findIndex((p) => p.isReporting) - 1];
-  const categories = Object.keys(categoryBreakdown).sort(
-    (a, b) => (categoryBreakdown[b] || 0) - (categoryBreakdown[a] || 0),
-  );
-  const total = kpi.totalEmissions || 1;
-  const canApplyAction = can("recommendation:apply");
-  const committed = appliedAction || nextBestAction?.status === "ACCEPTED";
+  const used: number = period.hasData ? kpi.totalEmissions : 0;
+  // the yardstick comes from the server: the measured average of the state's homes this month, or the starting estimate
+  const allowance: { allowanceKg: number; perPersonKg: number; source: "HOMES" | "ESTIMATE"; homes: number } = data.allowance;
+  const ratio = allowance.allowanceKg > 0 ? used / allowance.allowanceKg : 0;
+  const cs = { allowanceKg: allowance.allowanceKg, ratio, status: statusFor(used, allowance.allowanceKg), state: stateInfo(household.state) };
+  const tone = TONE[cs.status];
+  const words = STATUS_WORDS[cs.status];
+  const stateName = lang === "hi" ? cs.state.nameHi : cs.state.name;
+  const monthName = monthWords(period.month, lang);
+  const pctOfAllowance = Math.round(cs.ratio * 100);
+  const categories = Object.entries(categoryBreakdown as Record<string, number>)
+    .filter(([, kg]) => kg > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const total = categories.reduce((a, [, kg]) => a + kg, 0) || 1;
+  const top = categories[0];
+  const electricityKg = categories.filter(([c]) => /electric/i.test(c)).reduce((a, [, kg]) => a + kg, 0);
+  const canCommit = can("recommendation:apply");
+  const isCommitted = committed || nextBestAction?.status === "ACCEPTED";
+  const forYou = schemes.data?.forYou.length ?? 0;
 
   async function commit() {
     if (!nextBestAction?.id) return;
-    setCommitError(null);
     const res = await fetch(`/api/households/${household.id}/recommendations/${nextBestAction.id}/apply`, {
       method: "POST",
       headers: { "x-demo-role": demoRole },
     });
     if (res.ok) {
-      setAppliedAction(true);
+      setCommitted(true);
+      toast.success(t("Saved. We'll check your next bill to see the saving.", "सेव हो गया। अगले बिल में बचत देखेंगे।"));
       queryClient.invalidateQueries({ queryKey: ["household", household.id] });
     } else {
       const body = await res.json().catch(() => ({}));
-      setCommitError(body.error ?? "Couldn't save the commitment.");
+      toast.error(body.error ?? t("Couldn't save. Please try again.", "सेव नहीं हुआ। फिर कोशिश करें।"));
     }
   }
-  const perPerson = household.size && period.hasData ? Math.round(kpi.totalEmissions / household.size) : null;
-  const sources = [
-    provenance.nBills ? `${provenance.nBills} bill${provenance.nBills > 1 ? "s" : ""}` : null,
-    provenance.nLogs ? `${provenance.nLogs} logged ${provenance.nLogs > 1 ? "activities" : "activity"}` : null,
-  ].filter(Boolean);
 
   return (
-    <div className="flex flex-col gap-12">
-      {/* Statement header */}
-      <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div>
-          <span className="label-caps">Home</span>
-          <h1 className="mt-2 font-heading text-4xl md:text-5xl font-medium tracking-tight text-ink">
-            {household.name}
-          </h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            {[household.city, household.state].filter(Boolean).join(", ")}
-            {household.size ? ` · ${household.size} people` : ""}
-            {perPerson !== null ? ` · ${perPerson} kg per person` : ""}
-          </p>
-        </div>
-        <div className="md:text-right">
-          <span className="label-caps">{period.label}{period.isPartial ? " · so far" : ""}</span>
-          <div className="mt-1 flex items-baseline gap-2 md:justify-end">
-            <span className="font-heading text-6xl font-medium leading-none tracking-tight tabular-nums">
-              {period.hasData ? kpi.totalEmissions : "—"}
-            </span>
-            <span className="font-mono text-sm text-ink-muted">kg CO₂</span>
-          </div>
-          {kpi.trendPct !== null && (
-            <p className={`mt-2 font-mono text-xs tabular-nums ${kpi.trendPct <= 0 ? "text-success-text" : "text-critical-text"}`}>
-              {kpi.trendPct > 0 ? "▲" : "▼"} {Math.abs(kpi.trendPct)}% vs {kpi.priorEmissions} kg the month before
-            </p>
-          )}
-          {kpi.trendPct === null && priorPoint?.partial && (
-            <p className="mt-2 font-mono text-[11px] text-ink-muted">
-              Not compared: {priorPoint.label} has only {priorPoint.billedDays} of {priorPoint.daysInMonth} days billed
-            </p>
-          )}
-          {period.newerPartial && (
-            <p className="mt-1 font-mono text-[11px] text-ink-muted">
-              {period.newerPartial.label} so far: {period.newerPartial.totalKg} kg ({period.newerPartial.billedDays} of{" "}
-              {period.newerPartial.daysInMonth} days billed)
-            </p>
-          )}
-          {period.soFar && period.soFar.month !== period.month && !period.newerPartial && (
-            <p className="mt-1 font-mono text-[11px] text-ink-muted">
-              This month so far: {period.soFar.totalKg} kg
-            </p>
-          )}
-        </div>
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-1">
+        <span className="label-caps">{t("My home", "मेरा घर")}</span>
+        <h1 className="font-heading text-3xl font-medium tracking-tight md:text-[2.6rem]">{household.name}</h1>
+        <p className="text-[15px] text-ink-muted">
+          {[household.city, stateName].filter(Boolean).join(", ")} · {household.size} {t("people", "लोग")}
+        </p>
       </header>
 
-      <HomeNudges hasData={period.hasData} />
+      {/* 1 · One big number, one colour, one sentence */}
+      <section aria-labelledby="status-h" className={`border ${tone.border} bg-canvas-card`}>
+        <div className={`flex items-center gap-2 px-5 py-2.5 text-[14px] font-semibold ${tone.soft} ${tone.text}`}>
+          <tone.Icon className="h-5 w-5 shrink-0" />
+          <span id="status-h">{period.hasData ? (lang === "hi" ? words.hi : words.en) : t("No bill yet", "अभी कोई बिल नहीं")}</span>
+        </div>
+        <div className="grid gap-6 p-5 md:grid-cols-[1.1fr_1fr] md:p-7">
+          <div>
+            <p className="text-[15px] text-ink-muted">
+              {t(`Your home's carbon in ${monthName}`, `${monthName} में आपके घर का कार्बन`)}
+              {period.isPartial ? t(" (so far)", " (अब तक)") : ""}
+            </p>
+            <p className="mt-1 flex items-baseline gap-2">
+              <span className="font-heading text-6xl font-medium leading-none tracking-tight tabular-nums md:text-7xl">
+                {period.hasData ? Math.round(used) : "—"}
+              </span>
+              <span className="text-lg text-ink-muted">{t("kg CO₂e", "किलो CO₂e")}</span>
+            </p>
+            {period.hasData ? (
+              <p className="mt-3 max-w-md text-[15px] leading-relaxed">
+                {t(
+                  `That's ${pctOfAllowance}% of the ${stateName} average for a home of ${household.size}.`,
+                  `यह ${household.size} लोगों के घर के ${stateName} औसत का ${pctOfAllowance}% है।`,
+                )}{" "}
+                {top &&
+                  t(
+                    `Most of it (${Math.round((top[1] / total) * 100)}%) is ${categoryWords(top[0], "en").toLowerCase()}.`,
+                    `सबसे ज़्यादा (${Math.round((top[1] / total) * 100)}%) ${categoryWords(top[0], "hi")} से।`,
+                  )}
+              </p>
+            ) : (
+              <p className="mt-3 max-w-md text-[15px] leading-relaxed">
+                {t("Add your electricity bill. We read it and show your home's carbon here.", "अपना बिजली बिल डालें। हम उसे पढ़कर यहाँ दिखाएँगे।")}
+              </p>
+            )}
+            {kpi.trendPct !== null && (
+              <p className={`mt-3 inline-flex items-center gap-1.5 text-[14px] font-medium ${kpi.trendPct <= 0 ? "text-success-text" : "text-critical-text"}`}>
+                {kpi.trendPct <= 0 ? <TrendingDown className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
+                {kpi.trendPct <= 0
+                  ? t(`${Math.abs(kpi.trendPct)}% less than last month`, `पिछले महीने से ${Math.abs(kpi.trendPct)}% कम`)
+                  : t(`${kpi.trendPct}% more than last month`, `पिछले महीने से ${kpi.trendPct}% ज़्यादा`)}
+              </p>
+            )}
+          </div>
 
-      {data.setup && <GettingStarted setup={data.setup} sealed={(sealed.data ?? []).some((x) => x.anchored)} />}
+          {/* meter: used vs the state average for this home */}
+          <div className="flex flex-col justify-center gap-3">
+            <div className="flex items-baseline justify-between text-[13px]">
+              <span className="text-ink-muted">{t("Used", "इस्तेमाल")}</span>
+              <span className="text-ink-muted">
+                {t("State average for your home", "आपके घर के लिए राज्य औसत")}: <strong className="text-ink">{cs.allowanceKg} kg</strong>
+              </span>
+            </div>
+            <Meter pct={period.hasData ? pctOfAllowance : 0} status={cs.status} />
+            <ul className="grid grid-cols-2 gap-3 pt-1 text-[13px]">
+              <li className="border-l-2 border-border pl-3">
+                <span className="block text-ink-muted">{t("Electricity cost (approx.)", "बिजली का ख़र्च (लगभग)")}</span>
+                <span className="text-lg font-semibold tabular-nums">{electricityKg ? inr((electricityKg / GRID_KG_CO2E_PER_KWH) * 7) : "—"}</span>
+              </li>
+              <li className="border-l-2 border-border pl-3">
+                <span className="block text-ink-muted">{t("Same as running a 1.5-ton AC", "1.5 टन एसी चलाने जितना")}</span>
+                <span className="text-lg font-semibold tabular-nums">
+                  {period.hasData ? `${kgToAcDays(used)} ${t("days", "दिन")}` : "—"}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
 
-      {/* Where the headline number comes from */}
-      <p className="-mt-6 border-y border-border py-2.5 font-mono text-[11px] leading-relaxed text-ink-muted">
-        {period.hasData ? (
-          <>
-            {period.label}: worked out from {sources.join(" and ") || "no records"}
-            {provenance.nBills > 0 ? ` · ${provenance.billSharePct}% of the total is from bills` : " · no bills yet"}
-          </>
-        ) : (
-          <>
-            No emissions recorded yet.{" "}
-            <Link href="/bills/new" className="text-ink underline underline-offset-2">
-              Add your electricity bill
-            </Link>{" "}
-            to start.
-          </>
+        {/* one action */}
+        {nextBestAction && (
+          <div className="flex flex-col gap-3 border-t border-border px-5 py-4 md:flex-row md:items-center md:justify-between md:px-7">
+            <div>
+              <span className="label-caps text-secondary">{t("Do this one thing", "बस यह एक काम करें")}</span>
+              <p className="mt-1 text-[16px] font-semibold">{nextBestAction.action}</p>
+              <p className="text-[14px] text-ink-muted">
+                {t("Saves about", "लगभग बचत")} <strong className="text-ink">{inr(Number(nextBestAction.inrSaved))}</strong> {t("and", "और")}{" "}
+                <strong className="text-ink">{nextBestAction.kgSaved} kg</strong> {t("a month", "हर महीने")}
+              </p>
+            </div>
+            {canCommit ? (
+              <Button size="lg" variant={isCommitted ? "secondary" : "primary"} disabled={isCommitted || !nextBestAction.id} onClick={commit}>
+                {isCommitted ? t("I'm doing this ✓", "कर रहे हैं ✓") : t("I'll do this", "मैं यह करूँगा")}
+              </Button>
+            ) : (
+              <Link href="/actions" className="text-[14px] font-medium underline underline-offset-2">
+                {t("See all ways to save", "बचत के सभी तरीके")}
+              </Link>
+            )}
+          </div>
         )}
-      </p>
-
-      {/* KPI strip */}
-      <section className="grid grid-cols-2 xl:grid-cols-4 gap-x-8 gap-y-8">
-        <KpiCard
-          label="Largest source"
-          value={`${kpi.topContributor.sharePct}%`}
-          unit={kpi.topContributor.category}
-          metaText={`${kpi.topContributor.amountKg} kg in ${period.label}`}
-        />
-        <KpiCard
-          label="Carbon index"
-          value={kpi.score ?? "—"}
-          unit={kpi.score !== null ? "/ 100" : undefined}
-          deltaText={kpi.scoreBand ?? undefined}
-          deltaVariant={kpi.score >= 75 ? "positive" : kpi.score >= 60 ? "neutral" : "critical"}
-          metaText="Per person vs India, trend, efficiency, actions"
-        />
-        <KpiCard
-          label="Cleaner than"
-          value={kpi.peer ? `${kpi.peer.percentile}%` : "—"}
-          unit={kpi.peer ? `of ${kpi.peer.cohortCount} homes` : undefined}
-          deltaText={
-            kpi.peer
-              ? `${Math.abs(kpi.peer.differenceFromMedianPct)}% ${kpi.peer.differenceFromMedianPct <= 0 ? "below" : "above"} median ${kpi.peer.medianKg} kg`
-              : undefined
-          }
-          deltaVariant={kpi.peer && kpi.peer.differenceFromMedianPct <= 0 ? "positive" : "warning"}
-          metaText={kpi.peer ? `Homes with data for ${period.label}` : "Needs 3+ homes with data this month"}
-        />
-        <KpiCard
-          label="Savings available"
-          value={kpi.actionableSavingsKg ?? "—"}
-          unit={kpi.actionableSavingsKg !== null ? "kg / month" : undefined}
-          deltaText={kpi.actionableSavingsInr !== null ? `₹${Number(kpi.actionableSavingsInr).toLocaleString("en-IN")} / month` : undefined}
-          deltaVariant="positive"
-          metaText={kpi.actionableSavingsKg !== null ? "Top pending suggestion" : "No suggestions pending"}
-        />
       </section>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <div className="xl:col-span-8">
-          <GoalCard />
-        </div>
-        <div className="xl:col-span-4">
-          <CheckInPrompt />
-        </div>
-      </div>
+      {/* 2 · What next month will probably look like (machine-learned) */}
+      <NextMonthForecast householdId={activeHouseholdId} demoRole={demoRole} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-x-12 gap-y-12">
-        {/* 01 Trajectory */}
-        <section className="xl:col-span-7">
-          <SectionHeading index="01" title="Six-month trajectory" meta={`kg CO₂ per month · to ${period.label}`} />
-          <div className="mt-6 flex h-64 items-end gap-3 border-b border-ink">
-            {trend.map((pt) => {
-              if (pt.totalKg === null) {
-                return (
-                  <div key={pt.month} className="flex h-full flex-1 flex-col justify-end">
-                    <span className="mb-1.5 text-center font-mono text-[10px] text-ink-light">no data</span>
-                    <div className="h-[3px] border-t border-dashed border-ink-light" />
-                  </div>
-                );
-              }
-              const h = Math.max(4, (pt.totalKg / maxKg) * 85);
-              return (
-                <div key={pt.month} className="flex h-full flex-1 flex-col justify-end">
-                  <span
-                    className={`mb-1.5 text-center font-mono text-[11px] tabular-nums ${
-                      pt.isReporting ? "font-semibold text-ink" : "text-ink-muted"
-                    }`}
-                  >
-                    {Math.round(pt.totalKg)}
-                  </span>
-                  <div
-                    className={pt.isReporting ? "bg-secondary" : pt.partial ? "border border-dashed border-ink/60 bg-ink/15" : "bg-ink/80"}
-                    style={{ height: `${h}%` }}
-                    title={`${pt.label}: ${pt.totalKg} kg${pt.partial ? ` (${pt.billedDays} of ${pt.daysInMonth} days billed)` : ""}`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex gap-3">
-            {trend.map((pt) => (
-              <span
-                key={pt.month}
-                className={`flex-1 text-center font-mono text-[11px] leading-tight ${pt.isReporting ? "font-semibold text-ink" : "text-ink-muted"}`}
-              >
-                {pt.label}
-                {pt.partial && (
-                  <span className="block text-[9px] text-ink-light">
-                    {pt.billedDays}/{pt.daysInMonth} d
-                  </span>
-                )}
-              </span>
-            ))}
-          </div>
-          {trend.some((p) => p.partial) && (
-            <p className="mt-3 text-[11px] text-ink-muted">
-              Dashed bars are months your bills only partly cover; they fill in when the next bill arrives.
-            </p>
-          )}
+      {/* 3 · Two simple graphs */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="border border-border bg-canvas-card p-5 md:p-6">
+          <h2 className="font-heading text-xl font-medium">{t("Last 6 months", "पिछले 6 महीने")}</h2>
+          <p className="mt-1 text-[14px] text-ink-muted">
+            {t("Each bar is one month. The dotted line is the state average for your home.", "हर डंडा एक महीना है। बिंदु वाली रेखा आपके घर का राज्य औसत है।")}
+          </p>
+          <MonthBars trend={trend} allowance={cs.allowanceKg} lang={lang} t={t} />
         </section>
 
-        {/* 02 Sources */}
-        <section className="xl:col-span-5">
-          <SectionHeading index="02" title="Where it comes from" meta="AC sits inside electricity" />
-          <div className="mt-6 flex h-3 w-full overflow-hidden" aria-hidden>
-            {categories.map((cat) => (
-              <div
-                key={cat}
-                style={{
-                  width: `${((categoryBreakdown[cat] || 0) / total) * 100}%`,
-                  backgroundColor: categoryColor(cat),
-                }}
-              />
-            ))}
-          </div>
-          <table className="mt-5 w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="label-caps pb-2 font-medium">Category</th>
-                <th className="label-caps pb-2 text-right font-medium">kg</th>
-                <th className="label-caps pb-2 text-right font-medium">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((cat) => {
-                const kg = categoryBreakdown[cat] || 0;
+        <section className="border border-border bg-canvas-card p-5 md:p-6">
+          <h2 className="font-heading text-xl font-medium">{t("Where it went", "कहाँ से आया")}</h2>
+          <p className="mt-1 text-[14px] text-ink-muted">
+            {t(`What made your carbon in ${monthName}. The AC is part of electricity.`, `${monthName} में कार्बन किससे बना। एसी बिजली में गिना है।`)}
+          </p>
+          {categories.length === 0 ? (
+            <p className="mt-6 text-[14px] text-ink-muted">{t("Nothing yet.", "अभी कुछ नहीं।")}</p>
+          ) : (
+            <ul className="mt-5 flex flex-col gap-4">
+              {categories.map(([cat, kg]) => {
+                const pct = Math.round((kg / total) * 100);
                 return (
-                  <tr key={cat} className="border-b border-border/70">
-                    <td className="py-2.5">
-                      <span className="flex items-center gap-2.5">
-                        <span className="h-2.5 w-2.5" style={{ backgroundColor: categoryColor(cat) }} />
-                        {cat}
+                  <li key={cat}>
+                    <div className="flex items-baseline justify-between text-[14px]">
+                      <span className="font-medium">{categoryWords(cat, lang)}</span>
+                      <span className="tabular-nums text-ink-muted">
+                        <strong className="text-ink">{pct}%</strong> · {Math.round(kg)} kg
                       </span>
-                    </td>
-                    <td className="py-2.5 text-right font-mono tabular-nums">{kg}</td>
-                    <td className="py-2.5 text-right font-mono tabular-nums text-ink-muted">
-                      {Math.round((kg / total) * 100)}%
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="mt-1.5 h-3 w-full bg-canvas-subtle">
+                      <div className="h-full" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: categoryColor(cat) }} />
+                    </div>
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
-          <p className="mt-3 text-xs text-ink-muted">
-            Rooftop solar:{" "}
-            <span className="text-ink">
-              {solar.hasSolar ? `≈ ${solar.solarKwh} kWh a month (estimated from panel size)` : "none installed"}
-            </span>
-          </p>
-        </section>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-x-12 gap-y-12">
-        {/* 03 Next action */}
-        <section className="xl:col-span-7">
-          <SectionHeading
-            index="03"
-            title="Biggest lever right now"
-            meta={nextBestAction ? `${String(nextBestAction.difficulty).toLowerCase()} effort` : undefined}
-          />
-          {nextBestAction ? (
-            <div className="mt-6 border-l-2 border-secondary bg-canvas-card px-6 py-5">
-              <h3 className="font-heading text-2xl font-medium tracking-tight">{nextBestAction.action}</h3>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted">{nextBestAction.description}</p>
-              <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
-                <dl className="flex gap-10">
-                  <div>
-                    <dt className="label-caps">Saves</dt>
-                    <dd className="mt-1 font-heading text-3xl font-medium tabular-nums">
-                      {nextBestAction.kgSaved}
-                      <span className="ml-1 font-mono text-xs text-ink-muted">kg / mo</span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="label-caps">Bill impact</dt>
-                    <dd className="mt-1 font-heading text-3xl font-medium tabular-nums">
-                      ₹{Number(nextBestAction.inrSaved).toLocaleString("en-IN")}
-                      <span className="ml-1 font-mono text-xs text-ink-muted">/ mo</span>
-                    </dd>
-                  </div>
-                </dl>
-                <Button variant="primary" disabled={committed || !canApplyAction || !nextBestAction.id} onClick={commit}>
-                  {committed ? "Committed ✓" : canApplyAction ? "Commit to this" : "View only"}
-                </Button>
-              </div>
-              {commitError && <p className="mt-3 font-mono text-xs text-critical-text">{commitError}</p>}
-            </div>
-          ) : (
-            <p className="mt-6 text-sm text-ink-muted">
-              No suggestions pending. They&apos;re worked out from your bills, assets and logs; see{" "}
-              <Link href="/actions" className="text-ink underline underline-offset-2">
-                Actions
-              </Link>
-              .
-            </p>
+            </ul>
           )}
         </section>
-
-        {/* 04 Household */}
-        <section className="xl:col-span-5">
-          <SectionHeading index="04" title="Household" meta={`${members.length} members`} />
-          <table className="mt-6 w-full text-sm">
-            <tbody>
-              {members.map((m: { id: string; name: string; role: string }) => (
-                <tr key={m.id} className="border-b border-border/70">
-                  <td className="py-2.5">{m.name}</td>
-                  <td className="py-2.5 text-right font-mono text-[11px] uppercase text-ink-muted">{m.role}</td>
-                </tr>
-              ))}
-              <tr className="border-b border-border/70">
-                <td className="py-2.5 text-ink-muted">Vehicle</td>
-                <td className="py-2.5 text-right">
-                  {vehicles[0]?.name || "Public transport"}
-                  {vehicles[0]?.fuel ? (
-                    <span className="ml-2 font-mono text-[11px] uppercase text-ink-muted">{vehicles[0].fuel}</span>
-                  ) : null}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
       </div>
 
+      {data.gasBreakdown && <GasBreakdown gases={data.gasBreakdown} monthName={monthName} />}
+
+      <HomeNudges hasData={period.hasData} />
+      {data.setup && <GettingStarted setup={data.setup} sealed={(sealed.data ?? []).some((x) => x.anchored)} />}
+
+      {/* 3 · Big tiles to the other places */}
+      <nav aria-label={t("Go to", "यहाँ जाएँ")} className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {access?.canAddBills && <Tile href="/bills/new" Icon={Camera} title={t("Add a bill", "बिल डालें")} sub={t("Take a photo", "फ़ोटो खींचें")} accent />}
+        <Tile href="/yojana" Icon={Landmark} title={t("Govt schemes", "सरकारी योजना")} sub={forYou ? t(`${forYou} for your home`, `आपके लिए ${forYou}`) : t("Subsidies & free help", "सब्सिडी और मदद")} />
+        <Tile href="/mohalla" Icon={MapPinned} title={t("My mohalla", "मोहल्ला")} sub={t("Area, weather, air", "इलाका, मौसम, हवा")} />
+        <Tile href="/assets" Icon={CreditCard} title={t("Card & items", "कार्ड और सामान")} sub={t("Show at shops", "दुकान पर दिखाएँ")} />
+        {!access?.canAddBills && <Tile href="/reports" Icon={LayoutGrid} title={t("Monthly report", "मासिक रिपोर्ट")} sub={t("One page", "एक पेज")} />}
+      </nav>
+
+      <p className="font-mono text-[11px] leading-relaxed text-ink-muted">
+        {t("How the state average is set:", "राज्य औसत कैसे तय होता है:")}{" "}
+        {allowance.source === "HOMES"
+          ? t(
+              `the measured average of ${allowance.homes} Carbon Wallet homes in ${cs.state.name} this month (${allowance.perPersonKg} kg per person), times the people in your home.`,
+              `इस महीने ${cs.state.nameHi} के ${allowance.homes} Carbon Wallet घरों का मापा हुआ औसत (${allowance.perPersonKg} किलो प्रति व्यक्ति), आपके घर के लोगों से गुणा।`,
+            )
+          : ALLOWANCE_SOURCE}{" "}
+        <Link href="/how-we-calculate" className="underline underline-offset-2">
+          {t("More", "और")}
+        </Link>
+      </p>
     </div>
+  );
+}
+
+function Meter({ pct, status }: { pct: number; status: CarbonStatus }) {
+  // the bar spans 0–200 % of the average; the 100 % mark is the average
+  const width = Math.min(100, pct / 2);
+  return (
+    <div>
+      <div className="relative h-6 w-full bg-canvas-subtle" role="meter" aria-valuemin={0} aria-valuemax={200} aria-valuenow={pct} aria-label="Used vs state average">
+        <div className={`h-full ${TONE[status].bar}`} style={{ width: `${width}%` }} />
+        <span className="absolute inset-y-[-4px] left-1/2 w-[2px] bg-ink" aria-hidden />
+      </div>
+      <div className="mt-1 flex justify-between font-mono text-[11px] text-ink-muted">
+        <span>0</span>
+        <span className="font-semibold text-ink">{pct}%</span>
+        <span>200%</span>
+      </div>
+    </div>
+  );
+}
+
+function MonthBars({ trend, allowance, lang, t }: { trend: TrendPoint[]; allowance: number; lang: Lang; t: (en: string, hi: string) => string }) {
+  const max = Math.max(allowance, ...trend.map((p) => p.totalKg ?? 0), 1) * 1.15;
+  const linePct = (allowance / max) * 100;
+  return (
+    <div className="mt-5">
+      <div className="relative flex h-56 items-end gap-2 border-b border-ink sm:gap-3">
+        <div className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-ink/60" style={{ bottom: `${linePct}%` }} aria-hidden>
+          <span className="absolute -top-5 right-0 bg-canvas-card px-1 font-mono text-[10.5px] text-ink-muted">
+            {t("average", "औसत")} {allowance} kg
+          </span>
+        </div>
+        {trend.map((pt) => {
+          if (pt.totalKg === null) {
+            return (
+              <div key={pt.month} className="flex h-full flex-1 flex-col justify-end">
+                <span className="mb-1 text-center text-[10.5px] text-ink-light">{t("no bill", "बिल नहीं")}</span>
+              </div>
+            );
+          }
+          const st = statusFor(pt.totalKg, allowance);
+          return (
+            <div key={pt.month} className="flex h-full flex-1 flex-col justify-end">
+              <span className={`mb-1 text-center text-[12px] tabular-nums ${pt.isReporting ? "font-bold" : "text-ink-muted"}`}>{Math.round(pt.totalKg)}</span>
+              <div
+                className={`${TONE[st].bar} ${pt.partial ? "opacity-50" : ""} ${pt.isReporting ? "ring-2 ring-ink ring-offset-1" : ""}`}
+                style={{ height: `${Math.max(3, (pt.totalKg / max) * 100)}%` }}
+                title={`${pt.label}: ${pt.totalKg} kg`}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex gap-2 sm:gap-3">
+        {trend.map((pt) => (
+          <span key={pt.month} className={`flex-1 text-center text-[12px] ${pt.isReporting ? "font-semibold" : "text-ink-muted"}`}>
+            {shortMonth(pt.month, lang)}
+          </span>
+        ))}
+      </div>
+      {trend.some((p) => p.partial) && (
+        <p className="mt-3 text-[12px] text-ink-muted">{t("Faded bars: the bill covers only part of that month.", "हल्के डंडे: बिल उस महीने का कुछ ही हिस्सा बताता है।")}</p>
+      )}
+    </div>
+  );
+}
+
+function Tile({ href, Icon, title, sub, accent = false }: { href: string; Icon: typeof Camera; title: string; sub: string; accent?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`group flex min-h-[112px] flex-col justify-between border p-4 transition-colors ${
+        accent ? "border-secondary bg-secondary text-white hover:bg-secondary-hover" : "border-border bg-canvas-card hover:border-ink"
+      }`}
+    >
+      <Icon className="h-6 w-6" />
+      <span>
+        <span className="flex items-center gap-1 text-[15px] font-semibold">
+          {title} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </span>
+        <span className={`text-[13px] ${accent ? "text-white/85" : "text-ink-muted"}`}>{sub}</span>
+      </span>
+    </Link>
   );
 }

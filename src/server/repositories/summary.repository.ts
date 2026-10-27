@@ -1,8 +1,11 @@
 import { db } from "@/server/db";
+import { gasesFromCategories, type Gas } from "@/lib/ghg";
 
 export interface MonthlySummaryData {
   totalKg: number;
   byCategory: Record<string, number>;
+  /** kg CO₂e per gas; worked out from the categories when not given */
+  byGas?: Record<Gas, number>;
   score: number;
 }
 
@@ -31,6 +34,7 @@ export class SummaryRepository {
     tx: typeof db = db
   ) {
     const byCategoryJson = JSON.stringify(data.byCategory);
+    const byGasJson = JSON.stringify(data.byGas ?? gasesFromCategories(data.byCategory));
 
     return tx.monthlySummary.upsert({
       where: {
@@ -42,6 +46,7 @@ export class SummaryRepository {
       update: {
         totalKg: data.totalKg,
         byCategory: byCategoryJson,
+        byGas: byGasJson,
         score: data.score,
       },
       create: {
@@ -49,6 +54,7 @@ export class SummaryRepository {
         month,
         totalKg: data.totalKg,
         byCategory: byCategoryJson,
+        byGas: byGasJson,
         score: data.score,
       },
     });

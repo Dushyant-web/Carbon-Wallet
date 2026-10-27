@@ -1,0 +1,10 @@
+sku,kind,type,brand,model,title,description,price_inr,stars,inverter,capacity_ton,rated_power_w,annual_kwh,label_year,refrigerant,fuel,km_per_unit,battery_kwh,model_year,warranty_years,image
+AC-15-5S-INV,APPLIANCE,AC,Coolwell,CW-18INV-5S,Coolwell 1.5 t 5-star inverter split AC,"Copper coil, R32 gas, 4-way swing, 24°C default",41990,5,yes,1.5,1450,820,2026,R32,,,,,5,coolwell-18inv-5s.png
+AC-10-5S-INV,APPLIANCE,AC,Coolwell,CW-12INV-5S,Coolwell 1 t 5-star inverter split AC,"For rooms up to 120 sq ft",33490,5,yes,1,950,560,2026,R32,,,,,5,coolwell-12inv-5s.png
+AC-15-3S-FIX,APPLIANCE,AC,FrostAir,FA-18-3S,FrostAir 1.5 t 3-star fixed-speed split AC,"Cheaper to buy, costlier to run",30990,3,no,1.5,1650,1150,2026,R32,,,,,1,frostair-18-3s.png
+FR-260-3S,APPLIANCE,Refrigerator,Frostline,FL-260-3S,Frostline 260 L 3-star frost-free fridge,,24990,3,no,,120,255,2026,,,,,,2,frostline-260-3s.png
+FR-340-5S,APPLIANCE,Refrigerator,Frostline,FL-340-5S,Frostline 340 L 5-star inverter fridge,"Inverter compressor, 10-year compressor warranty",39990,5,yes,,110,190,2026,,,,,,10,frostline-340-5s.png
+WM-7-5S,APPLIANCE,WashingMachine,Washwell,WW-7FL-5S,Washwell 7 kg 5-star front-load washer,,28490,5,yes,,500,90,2026,,,,,,2,washwell-7kg-5s.png
+FAN-BLDC-28,APPLIANCE,Fan,Breeze,BZ-BLDC-28,Breeze 28 W BLDC ceiling fan,"Uses about half the power of an old fan",3690,5,no,,28,102,2026,,,,,,3,breeze-bldc-28w.png
+GY-15-5S,APPLIANCE,WaterHeater,Himtek,HT-15-5S,Himtek 15 L 5-star storage geyser,,8990,5,no,,2000,365,2026,,,,,,2,himtek-15l-5s.png
+IND-2000,APPLIANCE,Cooktop,Cookwise,CK-IND-2000,Cookwise 2000 W induction cooktop,"Cook without an LPG flame",2990,0,no,,2000,550,,,,,,,1,cookwise-induction-2000.png

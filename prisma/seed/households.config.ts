@@ -57,7 +57,7 @@ export const HOUSEHOLD_PROFILES: HouseholdProfile[] = [
   {
     id: "hh_01_sharma",
     name: "Sharma Residence",
-    city: "Noida",
+    city: "Greater Noida", // Knowledge Park II, the demo mohalla (knowledgePark.ts)
     state: "UP",
     country: "IN",
     size: 4,

@@ -172,6 +172,33 @@ flowchart LR
 4. If there have been more than 1 refill in 24 months, a refrigerant insight fires and the action "Ask the technician for a leak test and repair before the next refill" is promoted.
 5. These events are **not** charged against the monthly target as ordinary overage. They appear as a separate "one-off events" band in the month, so one event doesn't wreck the score. They do appear prominently in the annual view.
 
+### 2.9 Buying an AC or a car at a registered shop
+
+Three kinds of account: **platform admins**, **households** (one Owner, plus Family and View-only members) and **shops**
+that sell appliances and/or vehicles. Inside a household only the Owner changes anything; Family can look at everything
+and add electricity bills; View-only can only look.
+
+```mermaid
+flowchart LR
+  SU["Shop signs up<br/>(/merchant/signup)"] --> AD["Admin approves<br/>(/admin/merchants)"]
+  AD --> SC["Customer shows the Carbon Card;<br/>shop scans barcode or chip"]
+  SC -->|"private card code or paired chip only<br/>(shared /p/ links refused)"| TK["15-minute ticket<br/>shop sees name, city, Carbon ID"]
+  TK --> RG["Shop enters the item from the star label<br/>and invoice → Appliance / Vehicle, source MERCHANT"]
+  RG --> OW["Owner notified (push + banner)"]
+  OW -->|"Not ours"| RJ["Item removed, sale REJECTED<br/>counted against the shop"]
+```
+
+1. A shop signs up with its name, GSTIN, city and what it sells, and waits for a platform admin to approve it.
+2. At the counter it scans the customer's card (USB scanner, camera, phone NFC or the typed code). It gets a ticket that
+   lasts 15 minutes and covers up to 10 items, and sees only the home's name, city and Carbon ID.
+3. For an AC the shop enters brand, model, capacity, BEE stars and the **label's year** (BEE re-bases star bands every few
+   years, so a 2018 5-star and a 2026 5-star differ), rated power, refrigerant and serial number. For a vehicle: make,
+   model, fuel, year, certified mileage and chassis number.
+4. The item lands on the home at once, marked "Registered by <shop>". The household sets how much it is used; the
+   shop's specs stay locked. Every scan and registration is in the home's audit log.
+5. The owner can tap **Not ours** to remove it; admins see how many of each shop's items were turned down and can
+   suspend a shop, which ends its open tickets at once. Sealed months are not affected: they hold only totals.
+
 ---
 
 ## 3. System workflows

@@ -1,4 +1,5 @@
 import type { BillExtraction } from "@/lib/bills";
+import { engineHeaders } from "./engineAuth";
 import type { AnchorResult, CalibrationResult, DecompositionResult, StatementBundle, StatementStatus } from "@/lib/engine";
 
 // Server-side client for the FastAPI engine. Bill extraction is server-to-server only (engine key).
@@ -16,9 +17,10 @@ export class EngineError extends Error {
 export async function engineExtractBill(bytes: Buffer, allowAi: boolean): Promise<BillExtraction> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}/api/v1/bills/extract?allow_ai=${allowAi ? "true" : "false"}`, {
+    const url = `${BASE}/api/v1/bills/extract?allow_ai=${allowAi ? "true" : "false"}`;
+    res = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/octet-stream", "x-engine-key": process.env.ENGINE_API_KEY ?? "" },
+      headers: { "content-type": "application/octet-stream", ...engineHeaders("POST", url, bytes) },
       body: new Uint8Array(bytes),
       cache: "no-store",
     });
@@ -41,10 +43,12 @@ export type CalibrationInput = { period_start: string; period_end: string; kwh: 
 async function postJson<T>(path: string, body: unknown, withKey = false): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}/api/v1${path}`, {
+    const url = `${BASE}/api/v1${path}`;
+    const json = JSON.stringify(body);
+    res = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json", ...(withKey ? { "x-engine-key": process.env.ENGINE_API_KEY ?? "" } : {}) },
-      body: JSON.stringify(body),
+      headers: { "content-type": "application/json", ...(withKey ? engineHeaders("POST", url, json) : {}) },
+      body: json,
       cache: "no-store",
     });
   } catch {
@@ -97,7 +101,8 @@ export function engineHeatDays(city: string, state: string, periods: { start: st
 async function getJson<T>(path: string): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}/api/v1${path}`, { headers: { "x-engine-key": process.env.ENGINE_API_KEY ?? "" }, cache: "no-store" });
+    const url = `${BASE}/api/v1${path}`;
+    res = await fetch(url, { headers: engineHeaders("GET", url), cache: "no-store" });
   } catch {
     throw new EngineError("The engine is offline.", 503);
   }
@@ -173,9 +178,10 @@ export type FuelReading = {
 export async function engineExtractFuel(bytes: Buffer, allowAi: boolean): Promise<FuelReading> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}/api/v1/fuel/extract?allow_ai=${allowAi ? "true" : "false"}`, {
+    const url = `${BASE}/api/v1/fuel/extract?allow_ai=${allowAi ? "true" : "false"}`;
+    res = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/octet-stream", "x-engine-key": process.env.ENGINE_API_KEY ?? "" },
+      headers: { "content-type": "application/octet-stream", ...engineHeaders("POST", url, bytes) },
       body: new Uint8Array(bytes),
       cache: "no-store",
     });
@@ -186,4 +192,49 @@ export async function engineExtractFuel(bytes: Buffer, allowAi: boolean): Promis
   if ([400, 413, 415].includes(res.status)) throw new EngineError(body.detail ?? "That photo couldn't be read.", res.status);
   if (!res.ok) throw new EngineError("The photo reader failed on this image.", 502);
   return body as FuelReading;
+}
+
+// --- Machine-learned forecast (engine key) ------------------------------------------------------------------
+export type MlHome = { id: string; city: string; state: string; people: number; ac_kw: number; ac_count: number; appliance_kw: number; months: { month: string; kg: number }[] };
+type Scores = { mae_kg: number; mape_pct: number; r2: number };
+export type MlModelInfo = {
+  version: string;
+  trained_at: string;
+  algorithm: string;
+  target: string;
+  homes: number;
+  rows: number;
+  months: { from: string; to: string } | null;
+  weather: string;
+  held_out: { rows: number; model: Scores; same_as_last_month: Scores; same_month_last_year: Scores } | null;
+  beats_baseline: boolean;
+  importances: { feature: string; label: string; importance: number }[];
+};
+export type MlForecast = {
+  home_id: string;
+  month: string;
+  last_month: string;
+  last_kg: number;
+  kg: number;
+  low_kg: number;
+  high_kg: number;
+  change_kg: number;
+  typical_change_kg: number;
+  reasons: { label: string; label_hi: string; kg: number }[];
+  model_version: string;
+};
+
+export function engineMlTrain(homes: MlHome[]) {
+  return postJson<MlModelInfo>("/ml/forecast/train", { homes }, true);
+}
+/** Starts training on the engine and returns at once (for serverless callers that can't wait ~20 s). */
+export function engineMlTrainInBackground(homes: MlHome[]) {
+  return postJson<{ started: boolean; running: boolean; started_at: string | null }>("/ml/forecast/train?background=true", { homes }, true);
+}
+export type MlTraining = { running: boolean; started_at: string | null; finished_at: string | null; error: string | null };
+export function engineMlStatus() {
+  return getJson<{ trained: boolean; info: MlModelInfo | null; training?: MlTraining }>("/ml/forecast/status");
+}
+export function engineMlPredict(homes: MlHome[]) {
+  return postJson<{ forecasts: MlForecast[]; weather: string; model: Pick<MlModelInfo, "version" | "trained_at" | "beats_baseline" | "held_out"> }>("/ml/forecast/predict", { homes }, true);
 }

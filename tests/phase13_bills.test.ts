@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import { readFile, readdir } from "fs/promises";
 import path from "path";
@@ -59,7 +60,7 @@ vi.mock("@/server/engine", async (importOriginal) => {
       ac_kw: 1.21,
       ac_kw_range: [1.03, 1.39],
       latest_bill: {},
-      grid_factor: 0.675,
+      grid_factor: GRID,
       factor_set: "IN-2026.1",
     })),
   };
@@ -198,8 +199,8 @@ describe("Phase 13: bill upload, review, booking and reversal", () => {
     expect(await db.activity.count({ where: { coveredByBillId: billId } })).toBe(coveredBefore);
 
     // Electricity for each month is now exactly the bill's share at 0.675 kg/kWh
-    expect(await electricityKg(HH, "2026-01")).toBeCloseTo(310 * 0.675, 1);
-    expect(await electricityKg(HH, "2026-02")).toBeCloseTo(280 * 0.675, 1);
+    expect(await electricityKg(HH, "2026-01")).toBeCloseTo(310 * GRID, 1);
+    expect(await electricityKg(HH, "2026-02")).toBeCloseTo(280 * GRID, 1);
 
     const doc = await db.document.findUnique({ where: { id: documentId } });
     expect(doc!.status).toBe("CONFIRMED");
@@ -230,7 +231,7 @@ describe("Phase 13: bill upload, review, booking and reversal", () => {
     const list = await (await listBills(jsonReq(`/x`), p({ id: HH }))).json();
     expect(list.bills).toHaveLength(1);
     expect(list.bills[0]).toMatchObject({ days: 59, kwh: 590, source: "UPLOAD", discom: "PVVNL", consumerMasked: "••••4321" });
-    expect(list.bills[0].kgCo2e).toBe(Math.round(590 * 0.675 * 10) / 10);
+    expect(list.bills[0].kgCo2e).toBe(Math.round(590 * GRID * 10) / 10);
     expect(JSON.stringify(list)).not.toContain("a".repeat(64));
   });
 

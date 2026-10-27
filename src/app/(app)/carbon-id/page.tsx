@@ -9,6 +9,7 @@ import { useAppStore } from "@/store";
 import { useHouseholdOverview } from "@/hooks/useHousehold";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { CardItemsTabs } from "@/components/assets/CardItemsTabs";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { HouseholdCard } from "@/components/household/HouseholdCard";
 import { CarbonPassbook } from "@/components/passbook/CarbonPassbook";
@@ -45,6 +46,7 @@ function CarbonIdPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <CardItemsTabs />
       <PageIntro
         section="Your Carbon ID"
         title="Carbon ID & card"

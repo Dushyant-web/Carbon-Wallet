@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
 import { db } from "@/server/db";
 
 /**
@@ -5,7 +6,7 @@ import { db } from "@/server/db";
  * and a suggestion is only made when the inputs it needs exist (no AC on record → no AC suggestions).
  */
 
-const GRID_EF = 0.675; // kg CO2/kWh, CEA CO2 Baseline v22.0 FY 2025-26
+const GRID_EF = GRID_KG_CO2E_PER_KWH; // kg CO₂e/kWh: CEA CO₂ Baseline v22.0 FY 2025-26 + CH₄, N₂O
 const SETPOINT_SAVING_PER_C = 0.06; // ~6% less cooling energy per °C higher (BEE guidance)
 const SOLAR_KWH_PER_KWP_DAY = 4; // typical Indian rooftop yield
 const DEFAULT_TARIFF = 7; // ₹/kWh, used only when no bill shows an amount
@@ -100,7 +101,7 @@ export async function computeRecommendations(householdId: string): Promise<Compu
     out.push({
       code: "ac_leak_test",
       action: "Ask for a leak test before the next AC gas refill",
-      description: `Your AC needed gas ${refills._count === 1 ? "once" : `${refills._count} times`} in the last year: ${Math.round(refillKg)} kg CO₂, because that gas leaked out. Fixing the leak (usually a brazed joint or a loose flare nut) avoids the next refill; spread over a year that's ${Math.round(refillKg / 12)} kg a month.`,
+      description: `Your AC needed gas ${refills._count === 1 ? "once" : `${refills._count} times`} in the last year: ${Math.round(refillKg)} kg CO₂e, because that gas leaked out. Fixing the leak (usually a brazed joint or a loose flare nut) avoids the next refill; spread over a year that's ${Math.round(refillKg / 12)} kg a month.`,
       category: "Refrigerant",
       kgSaved: r1(refillKg / 12),
       inrSaved: 0,

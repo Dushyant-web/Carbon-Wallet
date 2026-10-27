@@ -4,7 +4,7 @@ import { rateLimit, clientIp } from "@/server/auth/rateLimit";
 import { safeEqual } from "@/server/auth/session";
 
 export async function POST(req: NextRequest) {
-  const limit = rateLimit(`admin-signup:${clientIp(req)}`, 5);
+  const limit = await rateLimit(`admin-signup:${clientIp(req)}`, 5);
   if (!limit.ok) return badRequest(`Too many attempts. Try again in ${limit.retryAfterSec}s.`, 429);
 
   const expected = process.env.ADMIN_INVITE_CODE;

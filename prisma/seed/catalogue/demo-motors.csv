@@ -1,0 +1,4 @@
+sku,kind,type,brand,model,title,description,price_inr,stars,inverter,capacity_ton,rated_power_w,annual_kwh,label_year,refrigerant,fuel,km_per_unit,battery_kwh,model_year,warranty_years,image
+EV-VOLT-30,VEHICLE,TwoWheeler,Demo Motors,Volt 3.0,Volt 3.0 electric scooter,"3 kWh battery, about 110 km per charge",109000,,no,,,,,,Electric,36,3,2026,3,volt-30.png
+PET-ZOOM-110,VEHICLE,TwoWheeler,Demo Motors,Zoom 110,Zoom 110 petrol scooter,,82000,,no,,,,,,Petrol,50,,2026,2,zoom-110.png
+CNG-HATCH,VEHICLE,Car,Demo Motors,Hatch CNG,Demo Hatch CNG hatchback,"Factory-fitted CNG, 26 km per kg",685000,,no,,,,,,CNG,26,,2026,3,demo-hatch-cng.png

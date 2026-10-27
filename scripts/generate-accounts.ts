@@ -14,6 +14,7 @@ const DEMO_PASSWORD = "CarbonDemo#2026";
 const ADMIN_PASSWORD = "AdminDemo#2026";
 const ADMIN_INVITE = process.env.ADMIN_INVITE_CODE ?? "(see ADMIN_INVITE_CODE in .env)";
 const ROLE_ORDER = ["OWNER", "MEMBER", "VIEWER"];
+const SHOP_PASSWORD = "ShopDemo#2026";
 
 async function main() {
   const households = await db.household.findMany({
@@ -21,6 +22,9 @@ async function main() {
     include: { memberships: { include: { user: true } } },
   });
   const admins = await db.user.findMany({ where: { platformRole: "ADMIN" }, orderBy: { email: "asc" } });
+  const shops = await db.merchant.findMany({ include: { user: true }, orderBy: { createdAt: "asc" } });
+  const demoShops = shops.filter((m) => m.user.email.endsWith(".example.com"));
+  const sharma = households.find((h) => h.name === "Sharma Residence");
 
   const isSeeded = (email: string) => email.endsWith("@example.com");
   const lines: string[] = [];
@@ -35,6 +39,10 @@ async function main() {
   lines.push(`| Household members (all seeded users) | password **\`${DEMO_PASSWORD}\`** · log in at \`/login\` |`);
   lines.push(`| Platform admin | **\`admin@carbonwallet.in\`** / **\`${ADMIN_PASSWORD}\`** · log in at \`/admin/login\` |`);
   lines.push(`| New admin sign-up | \`/admin/signup\` with invite code **\`${ADMIN_INVITE}\`** |`);
+  lines.push(`| Shop counter | **\`counter@demo-appliances.example.com\`** / **\`${SHOP_PASSWORD}\`** · log in at \`/merchant/login\` |`);
+  if (sharma?.cardCode) {
+    lines.push(`| Card code to try at the counter | \`${sharma.cardCode.replace(/^(CW1)(.{4})(.{4})(.{4})$/, "$1-$2-$3-$4")}\` (Sharma Residence; demo only, a real card's code is private) |`);
+  }
   lines.push("");
   lines.push("Roles inside a household: **Owner** (everything) · **Family** (MEMBER: view, add electricity bills) · **View only** (VIEWER: read only). Appliances and vehicles bought at a registered shop are added by the merchant.");
   lines.push("");
@@ -45,6 +53,18 @@ async function main() {
   lines.push("|---|---|---|");
   for (const a of admins) {
     lines.push(`| ${a.name} | \`${a.email}\` | ${a.email === "admin@carbonwallet.in" ? `\`${ADMIN_PASSWORD}\`` : "_set at sign-up_"} |`);
+  }
+  lines.push("");
+
+  lines.push("## Shops");
+  lines.push("");
+  lines.push("Shops scan a customer's Carbon Card and register what they bought onto that home. New shops sign up at `/merchant/signup`");
+  lines.push("and wait for a platform admin to approve them at `/admin/merchants`.");
+  lines.push("");
+  lines.push("| Shop | Sells | Status | Email | Password |");
+  lines.push("|---|---|---|---|---|");
+  for (const m of demoShops) {
+    lines.push(`| ${m.businessName}, ${m.city} | ${m.sells} | ${m.status} | \`${m.user.email}\` | \`${SHOP_PASSWORD}\` |`);
   }
   lines.push("");
 
@@ -76,7 +96,7 @@ async function main() {
 
   const out = path.resolve(__dirname, "../ACCOUNTS.md");
   writeFileSync(out, lines.join("\n"));
-  console.log(`Wrote ${out} (${households.length} households, ${admins.length} admins)`);
+  console.log(`Wrote ${out} (${households.length} households, ${admins.length} admins, ${demoShops.length} shops)`);
 }
 
 main()

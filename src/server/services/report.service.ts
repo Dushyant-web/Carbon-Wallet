@@ -1,7 +1,9 @@
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
 import { db } from "@/server/db";
 import { COUNTED_ACTIVITY } from "@/server/counted";
 import { stateToRegion, OFFICIAL_EMISSION_FACTORS } from "@/server/factors/registry";
 import { benchmarkService } from "@/server/services/benchmark.service";
+import { registeredBy } from "@/server/services/merchant.service";
 
 export class ReportUnavailable extends Error {}
 
@@ -142,6 +144,7 @@ export class ReportService {
     if (!household) {
       throw new Error(`Household ${householdId} not found`);
     }
+    const shops = await registeredBy(householdId);
 
     const currentSummary = household.monthlySummaries.find((s) => s.month === month) ?? null;
     if (!currentSummary || currentSummary.totalKg <= 0) {
@@ -166,7 +169,7 @@ export class ReportService {
     ) || OFFICIAL_EMISSION_FACTORS.find(
       (f) => f.category === "Electricity" && f.type === "grid_electricity" && f.region === "IN-NATIONAL"
     );
-    const gridFactorKgKwh = gridFactorObj?.kgCo2ePerUnit || 0.675;
+    const gridFactorKgKwh = gridFactorObj?.kgCo2ePerUnit || GRID_KG_CO2E_PER_KWH;
 
     // Every number below comes from this month's recorded emission events (bill-covered logs excluded)
     const events = await db.emissionEvent.findMany({
@@ -327,12 +330,16 @@ export class ReportService {
           type: a.type,
           rating: a.rating,
           powerKw: a.powerKw,
+          source: a.source, // MERCHANT: registered by the shop at the counter, specs from the label
+          registeredBy: shops.get(a.id)?.shop ?? null,
         })),
         vehicles: household.vehicles.map((v) => ({
           name: v.name || v.type,
           type: v.type,
           fuel: v.fuel,
           monthlyKm: v.monthlyKm,
+          source: v.source,
+          registeredBy: shops.get(v.id)?.shop ?? null,
         })),
       },
       recommendations: household.recommendations.map((r) => ({

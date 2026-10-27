@@ -1,10 +1,13 @@
+import { gasesFromCategories } from "@/lib/ghg";
 import { NextRequest, NextResponse } from "next/server";
 import { COUNTED_ACTIVITY } from "@/server/counted";
 import { db } from "@/server/db";
 import { hasPermission } from "@/server/auth/permissions";
 import { requireMembership, handleAuthError } from "@/server/auth/guard";
+import { registeredBy } from "@/server/services/merchant.service";
 import { monthCoverage, resolveReportingPeriod, shiftMonth } from "@/server/period";
 import { benchmarkService, BenchmarkUnavailable } from "@/server/services/benchmark.service";
+import { stateAverage } from "@/server/services/allowance.service";
 
 export async function GET(
   req: NextRequest,
@@ -66,6 +69,15 @@ export async function GET(
       }
     }
 
+    // Gas breakdown (kg CO₂e per gas), worked out from the categories for months stored before it existed
+    let gasBreakdown: Record<string, number> = {};
+    try {
+      gasBreakdown = JSON.parse(currentSummary?.byGas || "{}");
+    } catch {
+      gasBreakdown = {};
+    }
+    if (!Object.keys(gasBreakdown).length && Object.keys(breakdown).length) gasBreakdown = gasesFromCategories(breakdown);
+
     // Top contributor
     let topCat = "Electricity";
     let topKg = 0;
@@ -81,7 +93,8 @@ export async function GET(
 
     // Six calendar months ending at the newest month with data; gaps stay visible as null
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const lastMonth = period.newerPartial?.month ?? targetMonth;
+    // End at the newer part-billed month only when it follows straight on; otherwise six empty months would hide the data
+    const lastMonth = period.newerPartial && shiftMonth(targetMonth, 1) === period.newerPartial.month ? period.newerPartial.month : targetMonth;
     const byMonth = new Map(household.monthlySummaries.map((s) => [s.month, s.totalKg]));
     const historyMonths = Array.from({ length: 6 }, (_, i) => shiftMonth(lastMonth, i - 5)).map((month) => {
       const cov = coverage.get(month);
@@ -162,6 +175,7 @@ export async function GET(
       db.recommendation.count({ where: { householdId, status: { in: ["ACCEPTED", "COMPLETED"] } } }),
       db.challenge.count({ where: { householdId } }),
     ]);
+    const shops = await registeredBy(householdId); // items a shop registered at the counter
     const setup = {
       bills: billCount,
       assets: household.appliances.length + household.vehicles.length,
@@ -169,7 +183,11 @@ export async function GET(
       challenges: challengeCount,
     };
 
+    // the yardstick for the colour: measured state average for this month once there are enough homes
+    const average = await stateAverage(household.state, targetMonth);
+
     return NextResponse.json({
+      allowance: { ...average, allowanceKg: Math.round(average.perPersonKg * Math.max(1, household.size)) },
       access: { role: auth.role, viewOnly: !hasPermission(auth.role, "activity:create"), canAddBills: hasPermission(auth.role, "bill:create") },
       period,
       provenance,
@@ -203,6 +221,7 @@ export async function GET(
       },
       trendHistory: historyMonths,
       categoryBreakdown: breakdown,
+      gasBreakdown,
       nextBestAction: nba,
       members: household.memberships.map((m) => ({
         id: m.userId,
@@ -217,6 +236,12 @@ export async function GET(
         rating: a.rating,
         powerKw: a.powerKw,
         avgHoursPerDay: a.avgHoursPerDay,
+        source: a.source,
+        brand: a.brand,
+        model: a.model,
+        capacityTon: a.capacityTon,
+        labelYear: a.labelYear,
+        registeredBy: shops.get(a.id) ?? null,
       })),
       vehicles: household.vehicles.map((v) => ({
         id: v.id,
@@ -226,6 +251,9 @@ export async function GET(
         monthlyKm: v.monthlyKm,
         kmPerUnit: v.kmPerUnit,
         year: v.year,
+        source: v.source,
+        registrationNo: v.registrationNo,
+        registeredBy: shops.get(v.id) ?? null,
       })),
       solar: {
         hasSolar: !!solarAppliance,

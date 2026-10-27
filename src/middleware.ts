@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 // (expiry, disabled users, roles) happens in the (app)/(admin) layouts and in every API guard.
 const SESSION_COOKIE = "cw_session";
 
-const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/admin/login", "/admin/signup", "/merchant/login", "/merchant/signup", "/methodology", "/privacy"]);
+const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/admin/login", "/admin/signup", "/merchant/login", "/merchant/signup", "/methodology", "/privacy", "/open-data", "/policies"]);
 const PUBLIC_ENGINE = ["/py/api/v1/health", "/py/api/v1/verify", "/py/api/v1/factors"];
 
 export function middleware(req: NextRequest) {

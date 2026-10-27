@@ -168,13 +168,13 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="rounded-lg border border-border bg-canvas-subtle p-4">
               <span className="text-[10px] font-mono font-medium uppercase tracking-[0.08em] text-ink-muted">
-                Total CO₂
+                Total CO₂e
               </span>
               <div className="mt-1 flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-ink tabular-nums">
                   {report.summary.grossEmissionsKg}
                 </span>
-                <span className="text-xs font-semibold text-ink-muted">kg CO₂</span>
+                <span className="text-xs font-semibold text-ink-muted">kg CO₂e</span>
               </div>
               <span className="text-[11px] text-ink-muted">Everything recorded this month</span>
             </div>
@@ -204,7 +204,7 @@ export default function ReportsPage() {
                 <span className="text-2xl font-bold text-primary tabular-nums">
                   {report.summary.netEmissionsKg}
                 </span>
-                <span className="text-xs font-semibold text-primary">kg CO₂</span>
+                <span className="text-xs font-semibold text-primary">kg CO₂e</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                 {report.summary.momTrendPct === null ? (
@@ -249,7 +249,7 @@ export default function ReportsPage() {
                 <thead className="bg-canvas-subtle text-[11px] font-bold uppercase text-ink-muted border-b border-border">
                   <tr>
                     <th className="py-2.5 px-4">Type</th>
-                    <th className="py-2.5 px-4">Emissions (kg CO₂)</th>
+                    <th className="py-2.5 px-4">Emissions (kg CO₂e)</th>
                     <th className="py-2.5 px-4">Share</th>
                     <th className="py-2.5 px-4">From</th>
                   </tr>
@@ -352,7 +352,7 @@ export default function ReportsPage() {
                     </div>
                     <div className="text-right">
                       <span className="font-bold text-primary tabular-nums block">
-                        {c.kgCo2e} kg CO₂
+                        {c.kgCo2e} kg CO₂e
                       </span>
                       <span className="text-[10px] text-ink-muted tabular-nums">
                         {c.percentage}% of the total

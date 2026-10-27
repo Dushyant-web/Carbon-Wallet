@@ -49,6 +49,8 @@ export async function GET(req: NextRequest) {
         users: users.length,
         usersWithLogin: users.filter((u) => u.passwordHash).length,
         admins: users.filter((u) => u.platformRole === "ADMIN").length,
+        merchants: users.filter((u) => u.platformRole === "MERCHANT").length,
+        merchantsPending: await db.merchant.count({ where: { status: "PENDING" } }),
         households,
         activities,
       },

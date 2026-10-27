@@ -3,11 +3,25 @@ import React from "react";
 /** How every number is worked out, in plain words. Shown in the app and publicly at /methodology. */
 export const METHOD_SECTIONS: { title: string; body: React.ReactNode }[] = [
   {
+    title: "Which gases we count",
+    body: (
+      <>
+        All the greenhouse gases a home causes, not only carbon dioxide. Each is turned into CO₂-equivalent (CO₂e) with its
+        100-year warming factor from the IPCC&apos;s Sixth Assessment Report: <strong>CO₂e</strong> (×1) from burning coal, petrol,
+        diesel, CNG and LPG; <strong>methane, CH₄</strong> (×29.8, or ×27 from rotting waste) from landfills and engines;
+        <strong> nitrous oxide, N₂O</strong> (×273) from catalytic converters and coal burning; and <strong>HFCs</strong>, the AC
+        refrigerant gases (R-32 ×771, R-410A ×2,256, R-22 ×1,960) when gas leaks and is refilled. The CH₄ and N₂O from fuels use
+        the IPCC 2006 default emission factors. Food and travel factors are published as CO₂e already, so they include all three
+        gases. Every &ldquo;kg&rdquo; on this site is kg CO₂e.
+      </>
+    ),
+  },
+  {
     title: "Electricity",
     body: (
       <>
-        Every unit (kWh) you use from the grid counts as 0.675 kg of CO₂, India&apos;s official grid average for 2025-26 from the
-        Central Electricity Authority. When you upload a bill, its units become your electricity for those days, shared across the
+        Every unit (kWh) you use from the grid counts as 0.678 kg CO₂e: India&apos;s official grid average for 2025-26 from the
+        Central Electricity Authority (0.675 kg of CO₂) plus the methane and nitrous oxide from burning the coal. When you upload a bill, its units become your electricity for those days, shared across the
         calendar months the bill covers. Anything you logged by hand for the same days stops counting, so nothing is counted twice.
       </>
     ),

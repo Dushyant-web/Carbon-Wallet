@@ -80,7 +80,7 @@ function Viz({ kind }: { kind: Feature["viz"] }) {
           <motion.p className="text-3xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             20.73
           </motion.p>
-          <p className="mt-1 text-[12px] text-[#E8A27F]">= 47.9 kg CO₂</p>
+          <p className="mt-1 text-[12px] text-[#E8A27F]">= 47.9 kg CO₂e</p>
         </div>
       );
     case "split":
@@ -221,7 +221,7 @@ export function ProofDemo() {
               <motion.span key={kg} className="font-heading text-7xl font-light tabular-nums" initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
                 {kg}
               </motion.span>
-              <span className="text-canvas/60">kg CO₂</span>
+              <span className="text-canvas/60">kg CO₂e</span>
             </div>
             <p className="mt-6 font-mono text-[11px] text-canvas/45">fingerprint</p>
             <p className="font-mono text-[13px] tracking-wider text-canvas/85">

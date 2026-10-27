@@ -1,6 +1,6 @@
 """Consented AI fallback: an AI model reads a bill page when local OCR isn't confident.
 
-Provider: NVIDIA NIM when NVIDIA_API_KEY is set (see ai_nvidia.py), otherwise Claude (ANTHROPIC_API_KEY).
+Provider: Claude when ANTHROPIC_API_KEY is set, otherwise NVIDIA NIM (NVIDIA_API_KEY, see ai_nvidia.py).
 BILL_AI_PROVIDER=anthropic|nvidia forces one.
 
 Only called when the user ticks "let AI read this bill". The model's answer is never trusted
@@ -55,9 +55,13 @@ class AiUnavailable(RuntimeError):
     pass
 
 
+def _provider() -> str:
+    return os.getenv("BILL_AI_PROVIDER") or ("anthropic" if os.getenv("ANTHROPIC_API_KEY") or not os.getenv("NVIDIA_API_KEY") else "nvidia")
+
+
 def provider_name() -> str | None:
     """Who an AI read would be sent to, for the user's consent text (None if AI isn't configured)."""
-    provider = os.getenv("BILL_AI_PROVIDER") or ("nvidia" if os.getenv("NVIDIA_API_KEY") else "anthropic")
+    provider = _provider()
     if provider == "nvidia":
         return "NVIDIA" if os.getenv("NVIDIA_API_KEY") else None
     return "Anthropic" if os.getenv("ANTHROPIC_API_KEY") else None
@@ -65,12 +69,13 @@ def provider_name() -> str | None:
 
 def ai_read(*, pdf_bytes: bytes | None, page_pngs: list[bytes]) -> dict:
     """Returns the parsed JSON object, or raises AiUnavailable with a user-safe reason."""
-    provider = os.getenv("BILL_AI_PROVIDER") or ("nvidia" if os.getenv("NVIDIA_API_KEY") else "anthropic")
+    provider = _provider()
     if provider == "nvidia":
-        key = os.getenv("NVIDIA_API_KEY")
+        from .ai_nvidia import nvidia_key, nvidia_read  # local import: ai_nvidia imports AiUnavailable from here
+
+        key = nvidia_key()
         if not key:
             raise AiUnavailable("AI reading isn't configured on this server.")
-        from .ai_nvidia import nvidia_read  # local import: ai_nvidia imports AiUnavailable from here
 
         return nvidia_read(page_pngs=page_pngs, api_key=key)
     return _claude_read(pdf_bytes=pdf_bytes, page_pngs=page_pngs)

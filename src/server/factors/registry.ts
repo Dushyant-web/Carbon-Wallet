@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { Category } from "@/types";
+import { co2ePerUnit } from "@/lib/ghg";
 
 export interface FactorDefinition {
   category: Category;
@@ -11,7 +12,8 @@ export interface FactorDefinition {
   validFrom: Date;
 }
 
-export const OFFICIAL_EMISSION_FACTORS: FactorDefinition[] = [
+// As published: CO₂ only for fuels and electricity, CO₂e for food, travel, waste and refrigerants.
+const PUBLISHED_FACTORS: FactorDefinition[] = [
   // --- ELECTRICITY: CEA CO2 Baseline Database v22.0 (Aug 2026), FY 2025-26 ---
   // India runs one synchronised national grid; CEA publishes a single all-India weighted
   // average (0.675 tCO2/MWh). Regions are kept as lookup keys and all resolve to it.
@@ -301,6 +303,15 @@ export const OFFICIAL_EMISSION_FACTORS: FactorDefinition[] = [
 ];
 
 /**
+ * The factors the app uses: all greenhouse gases in CO₂e. Fuels and electricity get the CH₄ and N₂O from burning
+ * added to the published CO₂ (IPCC 2006 defaults, AR6 GWP100; see src/lib/ghg.ts); the rest are CO₂e already.
+ */
+export const OFFICIAL_EMISSION_FACTORS: FactorDefinition[] = PUBLISHED_FACTORS.map((f) => {
+  const all = co2ePerUnit(f.type, f.kgCo2ePerUnit);
+  return all === f.kgCo2ePerUnit ? f : { ...f, kgCo2ePerUnit: all, source: `${f.source}; + CH₄ and N₂O (IPCC 2006 defaults, AR6 GWP100)` };
+});
+
+/**
  * Seed or update all official emission factors in the database.
  */
 export async function seedEmissionFactors() {
@@ -335,7 +346,7 @@ export async function seedEmissionFactors() {
 /**
  * Helper to map household state / code to factor region code.
  */
-/** kg CO₂ per kWh of grid electricity for a state (the national figure when the state has none of its own). */
+/** kg CO₂e per kWh of grid electricity for a state (the national figure when the state has none of its own). */
 export function gridFactor(state?: string | null): number {
   const region = stateToRegion(state);
   const grid = OFFICIAL_EMISSION_FACTORS.filter((f) => f.type === "grid_electricity");

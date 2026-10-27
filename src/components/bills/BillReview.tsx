@@ -1,5 +1,6 @@
 "use client";
 
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
 import React, { useMemo, useState } from "react";
 import { AlertTriangle, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -7,7 +8,7 @@ import type { BillDocumentView, ExtractedField, FieldConfidence } from "@/lib/bi
 import { useAiReread, useConfirmBill, type ConfirmBillInput } from "@/hooks/useBills";
 import { BillPreview, type Highlight } from "./BillPreview";
 
-const GRID_EF = 0.675; // CEA CO2 Baseline v22.0, FY 2025-26: the factor confirmed bills are booked at
+const GRID_EF = GRID_KG_CO2E_PER_KWH; // CEA CO₂ Baseline v22.0 FY 2025-26 + CH₄, N₂O: what confirmed bills are booked at
 const DAY = 86_400_000;
 
 const COLOURS = {
@@ -349,7 +350,7 @@ export function BillReview({
           <div className="bg-primary px-5 py-4 text-canvas-card">
             <span className="label-caps text-canvas-card/60">This bill adds</span>
             <p className="mt-1 font-heading text-3xl font-medium tabular-nums">
-              {(kwh * GRID_EF).toFixed(1)} <span className="text-base text-canvas-card/70">kg CO₂</span>
+              {(kwh * GRID_EF).toFixed(1)} <span className="text-base text-canvas-card/70">kg CO₂e</span>
             </p>
             <p className="mt-1 font-mono text-[11px] text-canvas-card/70">
               {days} days · {(kwh / days).toFixed(1)} units a day

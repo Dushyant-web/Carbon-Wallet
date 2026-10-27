@@ -1,39 +1,56 @@
-import Link from "next/link";
+import { cookies } from "next/headers";
+import { RouteWarmup } from "@/components/layout/RouteWarmup";
+import { Partner } from "@/components/partner/Partner";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth/session";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { GovHeader } from "@/components/gov/GovHeader";
+import { PortalNav, type PortalLink } from "@/components/gov/PortalNav";
+import { AppFooter } from "@/components/layout/AppFooter";
+import { UiPrefsProvider } from "@/components/providers/UiPrefsProvider";
+import { UI_COOKIE, parseUiPrefs } from "@/lib/uiPrefs";
 
 export const metadata = { title: "Admin" };
+
+const LINKS: PortalLink[] = [
+  { href: "/admin", en: "Overview", hi: "सारांश", exact: true },
+  { href: "/admin/map", en: "Carbon map", hi: "कार्बन नक्शा" },
+  { href: "/admin/households", en: "Households", hi: "घर" },
+  { href: "/admin/merchants", en: "Shops", hi: "दुकानें" },
+  { href: "/admin/removals", en: "Removals", hi: "हटाने के अनुरोध" },
+  { href: "/admin/grievances", en: "Complaints", hi: "शिकायतें" },
+  { href: "/admin/schemes", en: "Schemes", hi: "योजनाएँ" },
+  { href: "/admin/ml", en: "AI forecast", hi: "AI अनुमान" },
+  { href: "/admin/reader", en: "Card reader", hi: "कार्ड रीडर" },
+  { href: "/dashboard", en: "Open app", hi: "ऐप खोलें" },
+];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
-  if (user.platformRole !== "ADMIN") redirect("/dashboard?denied=admin");
+  if (user.platformRole !== "ADMIN") redirect(user.platformRole === "MERCHANT" ? "/merchant" : "/dashboard?denied=admin");
+  const prefs = parseUiPrefs((await cookies()).get(UI_COOKIE)?.value);
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="border-b border-border bg-canvas">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 md:px-10">
-          <div className="flex items-end gap-6">
-            <Link href="/admin" className="flex items-end gap-2 pb-0.5">
-              <span className="font-heading text-[1.35rem] font-medium leading-none">Carbon Wallet</span>
-              <span className="label-caps">Admin</span>
-            </Link>
-            <nav className="hidden md:flex gap-5 text-sm">
-              <Link href="/admin" className="text-ink-muted hover:text-ink">Overview</Link>
-              <Link href="/admin/households" className="text-ink-muted hover:text-ink">Households</Link>
-              <Link href="/admin/merchants" className="text-ink-muted hover:text-ink">Merchants</Link>
-              <Link href="/admin/reader" className="text-ink-muted hover:text-ink">Card reader</Link>
-              <Link href="/dashboard" className="text-ink-muted hover:text-ink">Open app</Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden sm:inline text-ink-muted">{user.email}</span>
-            <LogoutButton redirectTo="/admin/login" />
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-[1280px] px-4 md:px-10 py-8">{children}</main>
-    </div>
+    <UiPrefsProvider initial={prefs}>
+      <div className="min-h-screen bg-canvas">
+        <GovHeader service="Administration · Citizen Carbon Service" serviceHi="प्रशासन · नागरिक कार्बन सेवा" home="/admin" />
+        <PortalNav
+          links={LINKS}
+          right={
+            <>
+              <NotificationBell allHref="/admin/notifications" variant="dark" />
+              <span className="hidden text-white/80 lg:inline">{user.email}</span>
+              <LogoutButton redirectTo="/admin/login" />
+            </>
+          }
+        />
+        <main id="main" className="mx-auto max-w-[1280px] px-4 py-8 md:px-10">{children}</main>
+        <AppFooter />
+      </div>
+      <Partner audience="admin" />
+      <RouteWarmup hrefs={LINKS.map((l) => l.href)} />
+    </UiPrefsProvider>
   );
 }

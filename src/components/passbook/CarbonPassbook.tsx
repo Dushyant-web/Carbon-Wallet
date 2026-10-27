@@ -182,7 +182,7 @@ export function CarbonPassbook({
                 <div className="flex h-full flex-col px-[3.2cqw] pb-[2.4cqw] pt-[2.6cqw]">
                   <div className="flex items-baseline justify-between border-b-2 border-ink pb-[0.6cqw]">
                     <span className="font-mono text-[1.15cqw] uppercase tracking-[0.16em] text-ink-muted">Statement of emissions</span>
-                    <span className="font-mono text-[1.05cqw] text-ink-muted">kg CO₂ · p.1</span>
+                    <span className="font-mono text-[1.05cqw] text-ink-muted">kg CO₂e · p.1</span>
                   </div>
                   <div className="grid grid-cols-[1.15fr_0.9fr_0.8fr_1.35fr] items-end py-[0.6cqw] font-mono text-[1.05cqw] uppercase tracking-[0.1em] text-ink-muted">
                     <span>Month</span>

@@ -140,7 +140,7 @@ export default function ProofPage() {
           </p>
           {bundle ? (
             <div className="border border-border bg-canvas-card p-3 font-mono text-xs text-ink">
-              <p>{period.label}: {String(bundle.statement.total_kg)} kg CO₂</p>
+              <p>{period.label}: {String(bundle.statement.total_kg)} kg CO₂e</p>
               <p className="mt-1 text-ink-muted">fingerprint {short(bundle.leaf)}</p>
             </div>
           ) : (

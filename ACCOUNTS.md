@@ -9,14 +9,27 @@
 | Household members (all seeded users) | password **`CarbonDemo#2026`** · log in at `/login` |
 | Platform admin | **`admin@carbonwallet.in`** / **`AdminDemo#2026`** · log in at `/admin/login` |
 | New admin sign-up | `/admin/signup` with invite code **`CW-ADMIN-2026`** |
+| Shop counter | **`counter@demo-appliances.example.com`** / **`ShopDemo#2026`** · log in at `/merchant/login` |
+| Card code to try at the counter | `CW1-GF7Z-8014-J97H` (Sharma Residence; demo only, a real card's code is private) |
 
-Roles inside a household: **Owner** (everything) · **Admin** (manage assets, members, cards) · **Member** (log, commit) · **Viewer** (read only).
+Roles inside a household: **Owner** (everything) · **Family** (MEMBER: view, add electricity bills) · **View only** (VIEWER: read only). Appliances and vehicles bought at a registered shop are added by the merchant.
 
 ## Platform admins
 
 | Name | Email | Password |
 |---|---|---|
 | Platform Admin | `admin@carbonwallet.in` | `AdminDemo#2026` |
+
+## Shops
+
+Shops scan a customer's Carbon Card and register what they bought onto that home. New shops sign up at `/merchant/signup`
+and wait for a platform admin to approve them at `/admin/merchants`.
+
+| Shop | Sells | Status | Email | Password |
+|---|---|---|---|---|
+| Demo Appliances, Noida | APPLIANCES | APPROVED | `counter@demo-appliances.example.com` | `ShopDemo#2026` |
+| Demo Motors, New Delhi | VEHICLES | APPROVED | `sales@demo-motors.example.com` | `ShopDemo#2026` |
+| New Shop Electronics, Pune | BOTH | PENDING | `owner@new-shop.example.com` | `ShopDemo#2026` |
 
 ## Households
 
@@ -27,7 +40,7 @@ Carbon ID `CW-DL-26-0001-0` · join code `MEHTA02` · public record `/p/Hh-Q_71Y
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Virendra Mehta | `virendra.mehta@example.com` | OWNER | `CarbonDemo#2026` |
-| Sunita Mehta | `sunita.mehta@example.com` | ADMIN | `CarbonDemo#2026` |
+| Sunita Mehta | `sunita.mehta@example.com` | MEMBER | `CarbonDemo#2026` |
 | Aarav Mehta | `aarav.mehta@example.com` | MEMBER | `CarbonDemo#2026` |
 | Diya Mehta | `diya.mehta@example.com` | MEMBER | `CarbonDemo#2026` |
 | Kavita Mehta | `kavita.mehta@example.com` | VIEWER | `CarbonDemo#2026` |
@@ -39,7 +52,7 @@ Carbon ID `CW-HR-26-0001-8` · join code `KAPOOR04` · public record `/p/21xzp66
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Rajesh Kapoor | `rajesh.kapoor@example.com` | OWNER | `CarbonDemo#2026` |
-| Nalini Kapoor | `nalini.kapoor@example.com` | ADMIN | `CarbonDemo#2026` |
+| Nalini Kapoor | `nalini.kapoor@example.com` | MEMBER | `CarbonDemo#2026` |
 | Tara Kapoor | `tara.kapoor@example.com` | MEMBER | `CarbonDemo#2026` |
 | Dev Kapoor | `dev.kapoor@example.com` | VIEWER | `CarbonDemo#2026` |
 
@@ -50,7 +63,7 @@ Carbon ID `CW-KA-26-0001-8` · join code `KHAN07` · public record `/p/JCIsItSf2
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Tariq Khan | `tariq.khan@example.com` | OWNER | `CarbonDemo#2026` |
-| Ayesha Khan | `ayesha.khan@example.com` | ADMIN | `CarbonDemo#2026` |
+| Ayesha Khan | `ayesha.khan@example.com` | MEMBER | `CarbonDemo#2026` |
 | Zayan Khan | `zayan.khan@example.com` | MEMBER | `CarbonDemo#2026` |
 
 ### Patel Residence — Mumbai, MH
@@ -60,7 +73,7 @@ Carbon ID `CW-MH-26-0001-9` · join code `PATEL08` · public record `/p/R9U_VNO0
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Hitesh Patel | `hitesh.patel@example.com` | OWNER | `CarbonDemo#2026` |
-| Geeta Patel | `geeta.patel@example.com` | ADMIN | `CarbonDemo#2026` |
+| Geeta Patel | `geeta.patel@example.com` | MEMBER | `CarbonDemo#2026` |
 | Devanshi Patel | `devanshi.patel@example.com` | MEMBER | `CarbonDemo#2026` |
 | Rushil Patel | `rushil.patel@example.com` | MEMBER | `CarbonDemo#2026` |
 
@@ -71,7 +84,7 @@ Carbon ID `CW-RJ-26-0001-4` · join code `GUPTA06` · public record `/p/pW6aB777
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Manish Gupta | `manish.gupta@example.com` | OWNER | `CarbonDemo#2026` |
-| Ritu Gupta | `ritu.gupta@example.com` | ADMIN | `CarbonDemo#2026` |
+| Ritu Gupta | `ritu.gupta@example.com` | MEMBER | `CarbonDemo#2026` |
 | Varun Gupta | `varun.gupta@example.com` | MEMBER | `CarbonDemo#2026` |
 | Shanti Gupta | `shanti.gupta@example.com` | VIEWER | `CarbonDemo#2026` |
 
@@ -82,7 +95,7 @@ Carbon ID `CW-TN-26-0001-2` · join code `IYER09` · public record `/p/_1V4rs1Lu
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Venkat Iyer | `venkat.iyer@example.com` | OWNER | `CarbonDemo#2026` |
-| Lakshmi Iyer | `lakshmi.iyer@example.com` | ADMIN | `CarbonDemo#2026` |
+| Lakshmi Iyer | `lakshmi.iyer@example.com` | MEMBER | `CarbonDemo#2026` |
 | Karthik Iyer | `karthik.iyer@example.com` | MEMBER | `CarbonDemo#2026` |
 | Subramanian Iyer | `subramanian.iyer@example.com` | VIEWER | `CarbonDemo#2026` |
 | Janaki Iyer | `janaki.iyer@example.com` | VIEWER | `CarbonDemo#2026` |
@@ -94,7 +107,7 @@ Carbon ID `CW-UP-26-0001-5` · join code `SHARMA01` · public record `/p/sharma-
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Arjun Sharma | `arjun.sharma@example.com` | OWNER | `CarbonDemo#2026` |
-| Pooja Sharma | `pooja.sharma@example.com` | ADMIN | `CarbonDemo#2026` |
+| Pooja Sharma | `pooja.sharma@example.com` | MEMBER | `CarbonDemo#2026` |
 | Rohan Sharma | `rohan.sharma@example.com` | MEMBER | `CarbonDemo#2026` |
 | Meera Sharma | `meera.sharma@example.com` | VIEWER | `CarbonDemo#2026` |
 
@@ -105,7 +118,7 @@ Carbon ID `CW-UP-26-0002-3` · join code `VERMA03` · public record `/p/0QLen419
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Sameer Verma | `sameer.verma@example.com` | OWNER | `CarbonDemo#2026` |
-| Anita Verma | `anita.verma@example.com` | ADMIN | `CarbonDemo#2026` |
+| Anita Verma | `anita.verma@example.com` | MEMBER | `CarbonDemo#2026` |
 | Kabir Verma | `kabir.verma@example.com` | MEMBER | `CarbonDemo#2026` |
 | Verma Viewer | `verma_viewer@example.com` | VIEWER | `CarbonDemo#2026` |
 
@@ -116,7 +129,7 @@ Carbon ID `CW-UP-26-0003-1` · join code `SINGH05` · public record `/p/Ox_JlZzN
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Harpreet Singh | `harpreet.singh@example.com` | OWNER | `CarbonDemo#2026` |
-| Gurpreet Singh | `gurpreet.singh@example.com` | ADMIN | `CarbonDemo#2026` |
+| Gurpreet Singh | `gurpreet.singh@example.com` | MEMBER | `CarbonDemo#2026` |
 | Simran Singh | `simran.singh@example.com` | MEMBER | `CarbonDemo#2026` |
 | Jasleen Singh | `jasleen.singh@example.com` | MEMBER | `CarbonDemo#2026` |
 | Balwant Singh | `balwant.singh@example.com` | VIEWER | `CarbonDemo#2026` |
@@ -129,7 +142,7 @@ Carbon ID `CW-WB-26-0001-1` · join code `ROY10` · public record `/p/c8cHAzomP9
 | Name | Email | Role | Password |
 |---|---|---|---|
 | Anirban Roy | `anirban.roy@example.com` | OWNER | `CarbonDemo#2026` |
-| Debashree Roy | `debashree.roy@example.com` | ADMIN | `CarbonDemo#2026` |
+| Debashree Roy | `debashree.roy@example.com` | MEMBER | `CarbonDemo#2026` |
 | Sourav Roy | `sourav.roy@example.com` | MEMBER | `CarbonDemo#2026` |
 
 Accounts created through sign-up are not listed here: they belong to real people, and only a hash of their

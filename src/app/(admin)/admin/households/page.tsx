@@ -38,6 +38,11 @@ export default function HouseholdsPage() {
   const { activeHouseholdId, setActiveHouseholdId, demoRole } = useAppStore();
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [searchQuery, setSearchQuery] = useState("");
+  // ?q= opens the list already filtered (the carbon map links here)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setSearchQuery(q);
+  }, []);
   const [stateFilter, setStateFilter] = useState("all");
   const [sizeBandFilter, setSizeBandFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name_asc");

@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: householdId } = await params;
     const auth = await requireMembership(req, householdId, "bill:create");
-    const limit = rateLimit(`bill-upload:${auth.userId}`, 20, 10 * 60_000);
+    const limit = await rateLimit(`bill-upload:${auth.userId}`, 20, 10 * 60_000);
     if (!limit.ok) {
       return NextResponse.json({ error: `Too many uploads. Try again in ${limit.retryAfterSec}s.` }, { status: 429 });
     }

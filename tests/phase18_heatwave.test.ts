@@ -1,3 +1,5 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
+const r1 = (n: number) => Math.round(n * 10) / 10;
 import { describe, it, expect, vi } from "vitest";
 import { db } from "@/server/db";
 
@@ -56,15 +58,15 @@ describe("Phase 18: heatwave days are essential cooling", () => {
     const ac = await getAcInsights(HH);
     expect(ac.heatwave?.totalDays).toBe(3);
     // 1.2 kW × 6 h × 2 days + 1.2 kW × 7 h × 1 day = 22.8 kWh × 0.675
-    expect(ac.heatwave?.essentialKg).toBeCloseTo(15.4, 1);
-    expect(ac.heatwave?.bills.map((b) => b.essentialKg)).toEqual([9.7, 5.7]);
+    expect(ac.heatwave?.essentialKg).toBeCloseTo(22.8 * GRID, 1);
+    expect(ac.heatwave?.bills.map((b) => b.essentialKg)).toEqual([r1(14.4 * GRID), r1(8.4 * GRID)]);
 
     const may = await db.bill.findFirstOrThrow({ where: { householdId: HH, periodStart: new Date("2024-05-01") } });
     expect(may.heatDays).toBe(2);
     expect(JSON.parse(may.heatDates!)).toEqual(["2024-05-20", "2024-05-21"]);
 
     // booked in the month of each heatwave day, from the stored days (no engine call)
-    expect(await essentialCoolingByMonth(HH)).toEqual({ "2024-05": 9.7, "2024-06": 5.7 });
+    expect(await essentialCoolingByMonth(HH)).toEqual({ "2024-05": r1(14.4 * GRID), "2024-06": r1(8.4 * GRID) });
   });
 
   it("never suggests cutting AC on heatwave days", async () => {
@@ -73,7 +75,7 @@ describe("Phase 18: heatwave days are essential cooling", () => {
     expect(hour.action).toMatch(/normal days/);
     expect(hour.description).toMatch(/Not on heatwave days/);
     // latest AC bill: 1 heatwave day in 30 → the saving counts 29 normal days at 1.2 kW
-    expect(hour.kgSaved).toBeCloseTo(1.2 * 29 * 0.675, 1);
+    expect(hour.kgSaved).toBeCloseTo(1.2 * 29 * GRID, 1);
   });
 
   it("suggests a leak test once an AC gas refill is on record", async () => {

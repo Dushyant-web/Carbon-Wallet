@@ -6,7 +6,7 @@
   body {
     background-color: #F4F1EA;
     color: #1D1C18;
-    font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-plex-sans), var(--font-plex-deva), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -30,6 +30,13 @@
   /* Small mono caption used for labels, units and section numbers */
   .label-caps {
     @apply font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted;
+  }
+
+  /* Letter-spacing and the mono face break Devanagari conjuncts: Hindi captions use the plain Hindi face */
+  [lang="hi"] .label-caps {
+    letter-spacing: normal;
+    font-family: var(--font-plex-deva), var(--font-plex-sans), sans-serif;
+    font-size: 12px;
   }
 
   /* Ruled section header: number + title + hairline */
@@ -159,3 +166,28 @@ html.lenis body {
 .cw-load-cap-1 { animation: cw-load-caption 1.4s ease 0.3s both; }
 .cw-load-cap-2 { animation: cw-load-ready 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.7s both; }
 @media (prefers-reduced-motion: reduce) { .cw-load { display: none; } }
+
+/* "What's new" ticker: two copies of the row slide left forever; paused on hover and for reduced motion */
+@keyframes cw-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.cw-ticker { animation: cw-ticker 60s linear infinite; }
+.cw-ticker:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cw-ticker { animation: none; } }
+
+/* Map labels on the Mohalla map */
+.cw-map-label { background: #12284C; color: #fff; border: 0; border-radius: 2px; font-weight: 600; font-size: 12px; padding: 2px 6px; box-shadow: none; }
+.cw-map-label::before { border-top-color: #12284C !important; }
+
+/* Map controls (src/components/map/baseMap.ts) */
+.cw-map-tools { display: flex; flex-direction: column; }
+.cw-map-btn { display: flex; width: 34px; height: 34px; align-items: center; justify-content: center; background: #fff; color: #12284C; border: 0; border-bottom: 1px solid #ccc; cursor: pointer; }
+.cw-map-btn:last-child { border-bottom: 0; }
+.cw-map-btn:hover { background: #E9EFF8; }
+.cw-map-legend { background: rgba(255, 255, 255, 0.95); padding: 6px 8px; border-radius: 3px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); font: 12px/1.6 var(--font-plex-sans), sans-serif; color: #1D1C18; }
+.cw-map-legend span { display: flex; align-items: center; gap: 6px; }
+.cw-map-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.leaflet-container:fullscreen { height: 100vh !important; width: 100vw !important; }
+
+/* Navigation progress bar (NavProgress.tsx): runs towards 90% while the next page loads */
+@keyframes cw-nav { from { width: 0; } to { width: 90%; } }
+.cw-nav-loading { animation: cw-nav 6s cubic-bezier(0.1, 0.7, 0.2, 1) forwards; }
+@media (prefers-reduced-motion: reduce) { .cw-nav-loading { animation-duration: 0.01s; } }

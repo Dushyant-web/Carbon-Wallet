@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return badRequest(GENERIC, 401);
   const { email, password } = parsed.data;
 
-  const limit = rateLimit(`login:${clientIp(req)}:${email}`, 5);
+  const limit = await rateLimit(`login:${clientIp(req)}:${email}`, 5);
   if (!limit.ok) return badRequest(`Too many attempts. Try again in ${limit.retryAfterSec}s.`, 429);
 
   const user = await db.user.findUnique({ where: { email } });

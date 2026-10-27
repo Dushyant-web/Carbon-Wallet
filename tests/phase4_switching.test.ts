@@ -21,7 +21,7 @@ describe("Phase 4: App Shell & Household Switching Integration", () => {
 
     const sharmaData = await resSharma.json();
     expect(sharmaData.household.name).toBe("Sharma Residence");
-    expect(sharmaData.kpi.totalEmissions).toBe(286);
+    expect(sharmaData.kpi.totalEmissions).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
     expect(sharmaData.kpi.trendPct).toBe(-8.4);
     expect(sharmaData.kpi.topContributor.category).toBe("Electricity");
 
@@ -63,6 +63,6 @@ describe("Phase 4: App Shell & Household Switching Integration", () => {
 
     const sharma = data.households.find((h: { id: string }) => h.id === "hh_01_sharma");
     expect(sharma).toBeDefined();
-    expect(sharma.currentEmissions).toBe(286);
+    expect(sharma.currentEmissions).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
   });
 });

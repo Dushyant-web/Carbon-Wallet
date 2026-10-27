@@ -5,7 +5,7 @@ import { MerchantProfileSchema } from "@/lib/merchant";
 
 /** A shop signs up; it can scan cards only after a platform admin approves it (/admin/merchants). */
 export async function POST(req: NextRequest) {
-  const limit = rateLimit(`merchant-signup:${clientIp(req)}`, 5);
+  const limit = await rateLimit(`merchant-signup:${clientIp(req)}`, 5);
   if (!limit.ok) return badRequest(`Too many attempts. Try again in ${limit.retryAfterSec}s.`, 429);
 
   const body = await req.json().catch(() => null);

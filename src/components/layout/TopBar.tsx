@@ -1,23 +1,26 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Link from "next/link";
+import { Camera } from "lucide-react";
 import { HouseholdSwitcher } from "./HouseholdSwitcher";
 import { RoleSwitcher } from "./RoleSwitcher";
-import { Button } from "@/components/ui/Button";
+import { MobileMenu } from "./MobileMenu";
+import { Breadcrumbs } from "@/components/gov/Breadcrumbs";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { Plus } from "lucide-react";
 import { useAppStore } from "@/store";
 import { useHouseholdOverview } from "@/hooks/useHousehold";
+import { useUiPrefs } from "@/components/providers/UiPrefsProvider";
 import type { Role } from "@/types";
 import type { PlatformRole } from "@/server/auth/session";
 
 type TopBarUser = { name: string; email: string; platformRole: PlatformRole };
 
 export function TopBar({ user }: { user: TopBarUser }) {
-  const { setLogModalOpen, setCreateModalOpen, activeHouseholdId, demoRole, setDemoRole } = useAppStore();
-  // The month the numbers on screen refer to (latest complete month with data), not today's date
+  const { setCreateModalOpen, activeHouseholdId, demoRole, setDemoRole } = useAppStore();
+  const { t } = useUiPrefs();
   const overview = useHouseholdOverview(activeHouseholdId);
-  const period: string | undefined = overview.data?.period?.label;
   const access: { role: Role; viewOnly: boolean; canAddBills: boolean } | undefined = overview.data?.access;
   // Buttons follow the real access level (e.g. platform admins see any home read-only)
   useEffect(() => {
@@ -25,32 +28,47 @@ export function TopBar({ user }: { user: TopBarUser }) {
     if (access && rank[access.role] < rank[demoRole]) setDemoRole(access.role);
   }, [access, demoRole, setDemoRole]);
 
+  const roleWord =
+    access?.role === "OWNER" ? t("Owner", "मालिक") : access?.role === "MEMBER" ? t("Family", "परिवार") : access ? t("View only", "सिर्फ़ देखें") : null;
+
   return (
-    <header className="fixed top-0 left-0 lg:left-60 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-canvas px-3 md:px-10 print:hidden">
-      <div className="flex min-w-0 items-center gap-3 md:gap-5">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-border bg-white/95 px-2 shadow-[0_1px_0_rgba(18,40,76,0.06)] backdrop-blur md:px-8 print:hidden">
+      <div className="flex min-w-0 items-center gap-1.5 md:gap-4">
+        <MobileMenu isAdmin={user.platformRole === "ADMIN"} />
         <HouseholdSwitcher onOpenCreate={() => setCreateModalOpen(true)} />
-        {period && <span className="hidden xl:inline label-caps">Reporting · {period}</span>}
-        {access?.viewOnly && (
-          <span className="shrink-0 rounded-full border border-warning-border bg-warning-subtle px-2.5 py-0.5 text-[11px] font-medium text-warning-text">
-            {access.canAddBills ? "Family · view + add bills" : "View only"}
+        <span className="hidden h-6 w-px bg-border md:block" aria-hidden />
+        <Breadcrumbs />
+        {roleWord && (
+          <span
+            className={`hidden shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium sm:inline ${
+              access?.role === "OWNER" ? "border-border bg-canvas-card text-ink-muted" : "border-warning-border bg-warning-subtle text-warning-text"
+            }`}
+            title={access?.canAddBills && access.viewOnly ? t("Can see everything and add bills", "सब देख सकते हैं, बिल डाल सकते हैं") : undefined}
+          >
+            {roleWord}
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-2 md:gap-3 shrink-0">
-        <div className="hidden md:block">
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
+        <div className="hidden xl:block">
           <RoleSwitcher />
         </div>
-        {!access?.viewOnly && (
-          <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setLogModalOpen(true)}>
-            <span className="hidden sm:inline">Log activity</span>
-            <span className="sm:hidden">Log</span>
-          </Button>
+        <NotificationBell allHref="/notifications" />
+        {access?.canAddBills && (
+          <Link
+            href="/bills/new"
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-gov-saffron px-3 text-sm font-semibold text-white hover:brightness-95 md:px-4"
+          >
+            <Camera className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("Add bill", "बिल डालें")}</span>
+            <span className="sm:hidden">{t("Bill", "बिल")}</span>
+          </Link>
         )}
-        <div className="hidden md:flex flex-col items-end leading-tight pl-1">
-          <span className="text-xs font-semibold text-ink">{user.name}</span>
+        <div className="hidden flex-col items-end pl-1 leading-tight md:flex">
+          <span className="max-w-[160px] truncate text-xs font-semibold text-ink">{user.name}</span>
           <span className="font-mono text-[10px] uppercase text-ink-muted">
-            {user.platformRole === "ADMIN" ? "Platform admin" : "Signed in"}
+            {user.platformRole === "ADMIN" ? "Platform admin" : t("Signed in", "लॉग इन")}
           </span>
         </div>
         <LogoutButton />

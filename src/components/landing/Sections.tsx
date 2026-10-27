@@ -124,7 +124,7 @@ export function HeatHabit() {
 /* ------------------------------------------------------------------ numbers */
 
 const STATS: { to: number; decimals?: number; suffix?: string; prefix?: string; label: string; note: string }[] = [
-  { to: 0.675, decimals: 3, label: "kg of CO₂", note: "for every unit of electricity from India's grid" },
+  { to: 0.678, decimals: 3, label: "kg of CO₂e", note: "for every unit of electricity from India's grid, all gases" },
   { to: 2.6, decimals: 1, suffix: "×", label: "more power", note: "than an AC's star label suggests, in a study of 1,500 Indian homes" },
   { to: 771, label: "kg of CO₂", note: "released by a single 1 kg top-up of the most common AC gas" },
   { to: 25, suffix: "+", label: "discoms", note: "whose bills we can read, from Delhi to Kerala" },

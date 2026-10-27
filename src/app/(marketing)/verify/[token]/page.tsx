@@ -46,7 +46,7 @@ function MonthCard({ m, check, onCheck }: { m: SharedMonth; check: Check | undef
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-heading text-2xl">{label(m.period)}</h2>
         <p className="font-heading text-3xl tabular-nums">
-          {m.totalKg.toLocaleString("en-IN")} <span className="text-base text-ink-muted">kg CO₂</span>
+          {m.totalKg.toLocaleString("en-IN")} <span className="text-base text-ink-muted">kg CO₂e</span>
         </p>
       </div>
       {cats.length > 0 && (

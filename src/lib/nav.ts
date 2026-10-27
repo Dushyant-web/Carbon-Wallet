@@ -1,12 +1,16 @@
+import type { Lang } from "@/lib/languages";
 import {
   Award,
   CalendarCheck,
   BarChart3,
-  Car,
+  BookOpen,
+  LifeBuoy,
+  CreditCard,
   FileText,
-  Fingerprint,
   Home,
+  Landmark,
   ListChecks,
+  MapPinned,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -17,55 +21,69 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** One navigation for the sidebar and the phone bottom bar, in the order a new user needs it. */
-export type NavItem = { href: string; label: string; hint: string; icon: LucideIcon };
+/**
+ * One navigation for the sidebar, the phone bottom bar and the phone menu.
+ * Five main places, each with an icon and a two-word label in English and Hindi; everything else sits under "More".
+ */
+export type NavItem = {
+  href: string;
+  en: string;
+  hi: string;
+  hint: string;
+  icon: LucideIcon;
+  /** other pages that light up this item */
+  also?: string[];
+  ownerOnly?: boolean;
+};
 
-export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+export const MAIN_NAV: NavItem[] = [
+  { href: "/dashboard", en: "My home", hi: "मेरा घर", hint: "This month's carbon, in one look", icon: Home },
+  { href: "/bills", en: "Electricity bill", hi: "बिजली बिल", hint: "Add a bill photo, we read it", icon: FileText },
+  { href: "/mohalla", en: "My mohalla", hi: "मोहल्ला", hint: "Your area, weather and air", icon: MapPinned },
   {
-    title: "Your home",
-    items: [
-      { href: "/dashboard", label: "Home", hint: "This month at a glance", icon: Home },
-      { href: "/check-in", label: "Weekly check-in", hint: "One minute a week", icon: CalendarCheck },
-      { href: "/bills", label: "Electricity bills", hint: "Upload a bill, we read it", icon: FileText },
-      { href: "/activities", label: "Activity log", hint: "Everything that added CO₂", icon: ListChecks },
-      { href: "/assets", label: "Appliances & vehicles", hint: "What your home runs", icon: Car },
-    ],
+    href: "/assets",
+    en: "Card & items",
+    hi: "कार्ड और सामान",
+    hint: "Carbon Card and what your home owns",
+    icon: CreditCard,
+    also: ["/carbon-id"],
   },
-  {
-    title: "Understand",
-    items: [
-      { href: "/insights", label: "Insights", hint: "What caused your CO₂, and what's next", icon: Sparkles },
-      { href: "/calibration", label: "AC & heat", hint: "Your AC's real power, heat vs habit", icon: Thermometer },
-      { href: "/what-if", label: "What if", hint: "Try a change before you make it", icon: SlidersHorizontal },
-      { href: "/leaderboard", label: "Leaderboard", hint: "How you rank", icon: Trophy },
-    ],
-  },
-  {
-    title: "Improve",
-    items: [
-      { href: "/actions", label: "Suggestions", hint: "Biggest savings for your home", icon: Target },
-      { href: "/challenges", label: "Challenges", hint: "Streaks, points and badges", icon: Award },
-      { href: "/reports", label: "Monthly report", hint: "One page, in plain words", icon: BarChart3 },
-    ],
-  },
-  {
-    title: "Your Carbon ID",
-    items: [
-      { href: "/carbon-id", label: "Carbon ID & card", hint: "Passbook and physical card", icon: Fingerprint },
-      { href: "/proof", label: "Proof check", hint: "Lock a month so no one can edit it", icon: ShieldCheck },
-    ],
-  },
-  {
-    title: "Account",
-    items: [{ href: "/settings", label: "Settings & privacy", hint: "Reminders, your data", icon: Settings }],
-  },
+  { href: "/yojana", en: "Govt schemes", hi: "सरकारी योजना", hint: "Subsidies and free help you can get", icon: Landmark },
 ];
 
-export const ALL_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+export const MORE_NAV: NavItem[] = [
+  { href: "/insights", en: "What caused it", hi: "कारण", hint: "What raised or lowered your carbon", icon: Sparkles },
+  { href: "/actions", en: "Ways to save", hi: "बचत के तरीके", hint: "Biggest savings for your home", icon: Target },
+  { href: "/reports", en: "Monthly report", hi: "मासिक रिपोर्ट", hint: "One page, in plain words", icon: BarChart3 },
+  { href: "/calibration", en: "AC & heat", hi: "एसी और गर्मी", hint: "Your AC's real power, heat vs habit", icon: Thermometer },
+  { href: "/what-if", en: "Try a change", hi: "बदलाव आज़माएँ", hint: "See the saving before you change", icon: SlidersHorizontal },
+  { href: "/check-in", en: "Weekly check-in", hi: "हफ़्ते की जाँच", hint: "One minute a week", icon: CalendarCheck, ownerOnly: true },
+  { href: "/activities", en: "Activity log", hi: "गतिविधि", hint: "Everything that added CO₂", icon: ListChecks },
+  { href: "/challenges", en: "Challenges", hi: "चुनौतियाँ", hint: "Streaks, points and badges", icon: Award },
+  { href: "/leaderboard", en: "Leaderboard", hi: "रैंकिंग", hint: "How homes compare", icon: Trophy },
+  { href: "/proof", en: "Proof check", hi: "प्रमाण", hint: "Lock a month so no one can edit it", icon: ShieldCheck },
+  { href: "/how-we-calculate", en: "How we calculate", hi: "हम कैसे गिनते हैं", hint: "The method, in plain words", icon: BookOpen },
+  { href: "/grievance", en: "Help & complaints", hi: "सहायता और शिकायत", hint: "Get a ticket number and a reply", icon: LifeBuoy },
+];
 
-/** Phone bottom bar: four most-used, the rest under "More". */
-export const MOBILE_PRIMARY = ["/dashboard", "/bills", "/insights", "/carbon-id"];
+export const SETTINGS_NAV: NavItem = {
+  href: "/settings",
+  en: "Settings",
+  hi: "सेटिंग",
+  hint: "Family, reminders, your data",
+  icon: Settings,
+};
+
+export const ALL_NAV: NavItem[] = [...MAIN_NAV, ...MORE_NAV, SETTINGS_NAV];
 
 export function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function isItemActive(pathname: string, item: NavItem) {
+  return [item.href, ...(item.also ?? [])].some((h) => isActive(pathname, h));
+}
+
+export function navLabel(item: NavItem, lang: Lang) {
+  return lang === "hi" ? item.hi : item.en;
 }

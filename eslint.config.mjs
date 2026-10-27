@@ -13,11 +13,16 @@ const eslintConfig = [
   {
     ignores: [
       ".next/**",
+      ".next-prod/**",
+      ".next-verify/**",
       "next-env.d.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**",
       "prisma/migrations/**",
+      "prisma/postgres/**", // generated schema, migrations and copy client
+      ".tmp/**",
+      "backend/.venv/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

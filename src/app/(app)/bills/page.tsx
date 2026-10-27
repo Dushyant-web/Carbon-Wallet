@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/ui/Pager";
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -27,6 +28,7 @@ function BillsPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
 
   const bills = data?.bills ?? [];
+  const paged = usePaged(bills);
   const totalKwh = bills.reduce((s, b) => s + b.kwh, 0);
   const totalDays = bills.reduce((s, b) => s + b.days, 0);
   const totalKg = bills.reduce((s, b) => s + b.kgCo2e, 0);
@@ -130,7 +132,7 @@ function BillsPage() {
           <section className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <KpiCard label="Bills on record" value={bills.length} metaText={`${totalDays} days covered`} />
             <KpiCard label="Electricity billed" value={Math.round(totalKwh).toLocaleString("en-IN")} unit="kWh" metaText={`${(totalKwh / Math.max(1, totalDays)).toFixed(1)} kWh a day on average`} />
-            <KpiCard label="Emissions" value={Math.round(totalKg).toLocaleString("en-IN")} unit="kg CO₂" metaText="From the units on your bills" />
+            <KpiCard label="Emissions" value={Math.round(totalKg).toLocaleString("en-IN")} unit="kg CO₂e" metaText="From the units on your bills" />
             <KpiCard
               label="Your AC draws"
               value={acMeasured ? cal!.acKw.toFixed(2) : "—"}
@@ -165,13 +167,13 @@ function BillsPage() {
                     <th className="label-caps pb-2 text-right font-medium">Units</th>
                     <th className="label-caps pb-2 text-right font-medium">Per day</th>
                     <th className="label-caps pb-2 text-right font-medium">Amount</th>
-                    <th className="label-caps pb-2 text-right font-medium">kg CO₂</th>
+                    <th className="label-caps pb-2 text-right font-medium">kg CO₂e</th>
                     <th className="label-caps pb-2 pl-6 font-medium">Source</th>
                     <th className="pb-2" />
                   </tr>
                 </thead>
                 <tbody>
-                  {bills.map((b) => (
+                  {paged.slice.map((b) => (
                     <BillRow
                       key={b.id}
                       bill={b}
@@ -187,6 +189,7 @@ function BillsPage() {
                 </tbody>
               </table>
             </div>
+            <Pager page={paged.page} pages={paged.pages} total={paged.total} onPage={paged.setPage} />
             {del.error && <p className="mt-3 text-[13px] text-critical-text">{(del.error as Error).message}</p>}
             <p className="mt-4 max-w-3xl text-[12px] leading-relaxed text-ink-muted">
               Each bill&apos;s units are shared across the calendar months it covers. Electricity

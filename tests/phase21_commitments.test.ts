@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { db } from "@/server/db";
 
@@ -38,13 +39,13 @@ describe("Phase 21: commit, then verify against bills and fill-ups", () => {
     cdd["2024-05-15"] = 260;
     const hot = (await billCheck(HH, committed))!;
     expect(hot.verification).toBe("BILL");
-    expect(hot.realizedKg).toBeCloseTo(160 * 0.675, 1);
+    expect(hot.realizedKg).toBeCloseTo(160 * GRID, 1);
     expect(hot.note).toMatch(/adjusting for the weather/);
 
     // cooler after (100): expected 150 + 150 = 300 kWh, actual 380 → no saving, and we say so
     cdd["2024-05-15"] = 100;
     const cool = (await billCheck(HH, committed))!;
-    expect(cool.realizedKg).toBeCloseTo(-80 * 0.675, 1);
+    expect(cool.realizedKg).toBeCloseTo(-80 * GRID, 1);
     expect(cool.note).toMatch(/didn't show a saving/);
 
     // no bill wholly after the commitment → nothing to measure yet

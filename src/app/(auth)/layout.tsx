@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Partner } from "@/components/partner/Partner";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <p className="text-[12px] text-canvas-card/50">Built on India&apos;s official electricity and fuel figures.</p>
       </aside>
       <main className="flex items-center justify-center px-6 py-12">{children}</main>
+      <Partner audience="guest" />
     </div>
   );
 }

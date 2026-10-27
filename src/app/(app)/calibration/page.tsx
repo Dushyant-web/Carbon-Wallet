@@ -221,7 +221,7 @@ export default function AcPage() {
                   <KpiCard
                     label="AC emissions, latest bill"
                     value={cal.latest_bill.ac_kg}
-                    unit="kg CO₂"
+                    unit="kg CO₂e"
                     deltaText={`≈ ${cal.latest_bill.ac_kg_low}–${cal.latest_bill.ac_kg_high}`}
                     deltaVariant="warning"
                     metaText={`of ${cal.latest_bill.electricity_kg} kg from the whole bill`}
@@ -421,7 +421,7 @@ export default function AcPage() {
           {refrKg !== null && (
             <div className="border-l-2 border-secondary bg-canvas-card px-6 py-4">
               <p className="font-heading text-3xl font-medium tabular-nums">
-                {refrKg} kg CO₂ <span className="text-base text-ink-muted">from one top-up</span>
+                {refrKg} kg CO₂e <span className="text-base text-ink-muted">from one top-up</span>
               </p>
               {can("activity:create") && (
                 <div className="mt-3 flex items-center gap-3">

@@ -81,7 +81,7 @@ const inQuietHours = (hour: number, from: number, to: number) => (from === to ? 
 /** One pass of the push scheduler: safe to run as often as you like. */
 export async function runReminders(now: Date = new Date()): Promise<{ sent: number; considered: number }> {
   const users = await db.user.findMany({
-    where: { status: "ACTIVE", pushSubscriptions: { some: {} } },
+    where: { status: "ACTIVE", memberships: { some: { status: "ACTIVE" } } }, // the bell works without push
     select: { id: true, memberships: { where: { status: "ACTIVE" }, select: { householdId: true, role: true } } },
   });
   let sent = 0;

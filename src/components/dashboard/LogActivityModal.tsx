@@ -351,7 +351,7 @@ export function LogActivityModal() {
           {preview ? (
             <>
               <p className="text-sm">
-                Adds <span className="font-heading text-2xl">{preview.kgCo2e.toLocaleString("en-IN", { maximumFractionDigits: 1 })}</span> kg CO₂
+                Adds <span className="font-heading text-2xl">{preview.kgCo2e.toLocaleString("en-IN", { maximumFractionDigits: 1 })}</span> kg CO₂e
               </p>
               <p className="mt-0.5 font-mono text-[11px] text-ink-muted">
                 {preview.effectiveQuantity.toLocaleString("en-IN")} {preview.effectiveUnit} × {preview.factorValue} kg · {preview.factorSource}

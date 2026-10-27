@@ -15,7 +15,7 @@ MAY = Bill(date(2026, 5, 1), date(2026, 6, 1), kwh=420, ac_hours=186)
 
 
 def test_grid_factor_is_cea_v22():
-    assert GRID_EF == 0.675
+    assert GRID_EF == 0.6781  # CEA 0.675 kg CO2 + CH4 and N2O from the coal, in CO2e
 
 
 def test_two_bill_calibration_matches_design_doc():
@@ -25,8 +25,8 @@ def test_two_bill_calibration_matches_design_doc():
     assert cal.ac_kw == pytest.approx(1.29, abs=0.005)
     br = ac_breakdown(MAY, cal)
     assert br["ac_kwh"] == pytest.approx(240.0, abs=0.1)
-    assert br["ac_kg"] == pytest.approx(162.0, abs=0.1)
-    assert br["electricity_kg"] == pytest.approx(283.5, abs=0.1)
+    assert br["ac_kg"] == pytest.approx(240.0 * GRID_EF, abs=0.1)  # 162.7 kg CO2e
+    assert br["electricity_kg"] == pytest.approx(420.0 * GRID_EF, abs=0.1)  # the May bill: 420 kWh
     assert br["ac_share_pct"] == pytest.approx(57.1, abs=0.1)
     assert br["ac_kg_low"] <= br["ac_kg"] <= br["ac_kg_high"]
 
@@ -51,7 +51,7 @@ def test_lmdi_splits_heat_and_habit_exactly():
     after = AcPeriod(cdd=210, ac_hours=5.1 * 31, kw=1.29, ef=GRID_EF)
     out = decompose(before, after)
     eff = out["effects_kg"]
-    assert eff["weather"] == pytest.approx(36.5, abs=0.1)
+    assert eff["weather"] == pytest.approx(36.5 * GRID_EF / 0.675, abs=0.1)  # design doc used CO2 only
     assert eff["behaviour"] == pytest.approx(17.6, abs=0.1)
     assert eff["equipment"] == 0 and eff["grid"] == 0
     assert sum(eff.values()) == pytest.approx(out["total_change_kg"], abs=0.15)
@@ -60,7 +60,7 @@ def test_lmdi_splits_heat_and_habit_exactly():
 def test_simulator_two_hours_less_matches_doc():
     out = simulate(Scenario(ac_kw=1.29, ac_hours_per_day=6, days=31, hours_reduction_per_day=2))
     assert out["ac_saved_kwh"] == pytest.approx(80.0, abs=0.1)
-    assert out["ac_saved_kg"] == pytest.approx(54.0, abs=0.1)
+    assert out["ac_saved_kg"] == pytest.approx(80.0 * GRID_EF, abs=0.1)
     assert out["inr_saved"] == 560
 
 

@@ -226,7 +226,8 @@ export const CardBack = React.forwardRef<SVGSVGElement, CardArtProps>(function C
       <text x="5.2" y="74.4" fill={INK} fontFamily="IBM Plex Mono, monospace" fontSize="2.6" fontWeight="600" letterSpacing="0.3">
         {carbonId}
       </text>
-      <text x="5.2" y="78.2" fill="#8F897D" fontFamily="IBM Plex Mono, monospace" fontSize="1.5" letterSpacing="0.3">
+      {/* 45 characters of letter-spaced mono don't fit the 43.6 mm column, so the spacing is fitted to it */}
+      <text x="5.2" y="78.2" fill="#8F897D" fontFamily="IBM Plex Mono, monospace" fontSize="1.5" textLength="43.6" lengthAdjust="spacing">
         NOT A PAYMENT CARD · IF FOUND, RETURN TO OWNER
       </text>
       <text x="5.2" y="81.3" fill="#8F897D" fontFamily="IBM Plex Mono, monospace" fontSize="1.5" letterSpacing="0.3">

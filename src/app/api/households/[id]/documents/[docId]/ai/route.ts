@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: householdId, docId } = await params;
     const auth = await requireMembership(req, householdId, "bill:create");
-    const limit = rateLimit(`bill-ai:${auth.userId}`, 10, 10 * 60_000);
+    const limit = await rateLimit(`bill-ai:${auth.userId}`, 10, 10 * 60_000);
     if (!limit.ok) {
       return NextResponse.json({ error: `Too many AI reads. Try again in ${limit.retryAfterSec}s.` }, { status: 429 });
     }

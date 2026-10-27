@@ -4,7 +4,7 @@ import { rateLimit, clientIp } from "@/server/auth/rateLimit";
 
 /** Public, read-only carbon record behind a household's shared link. Aggregates only: no members, join code or ids. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
-  const limit = rateLimit(`public-passbook:${clientIp(req)}`, 60);
+  const limit = await rateLimit(`public-passbook:${clientIp(req)}`, 60);
   if (!limit.ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const { token } = await params;

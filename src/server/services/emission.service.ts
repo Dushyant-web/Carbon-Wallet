@@ -1,3 +1,4 @@
+import { addGases, emptyGases, roundGases, splitByGas } from "@/lib/ghg";
 import { db } from "@/server/db";
 import { factorRepository } from "@/server/repositories/factor.repository";
 import { activityRepository } from "@/server/repositories/activity.repository";
@@ -244,11 +245,14 @@ export class EmissionService {
     };
 
     let totalKg = 0;
+    // and by gas: each event split by what its factor is made of (CO₂, CH₄, N₂O, HFCs; food and travel as CO₂e)
+    const byGas = emptyGases();
 
     for (const ev of events) {
       const cat = ev.activity.category;
       byCategory[cat] = Number(((byCategory[cat] || 0) + ev.kgCo2e).toFixed(2));
       totalKg = Number((totalKg + ev.kgCo2e).toFixed(2));
+      addGases(byGas, splitByGas(ev.factor.type, ev.kgCo2e));
     }
 
     // Score from this month's fresh total (the stored summary is about to be replaced)
@@ -262,6 +266,7 @@ export class EmissionService {
       {
         totalKg,
         byCategory,
+        byGas: roundGases(byGas),
         score: currentScore,
       },
       tx

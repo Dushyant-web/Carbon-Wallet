@@ -1,0 +1,39 @@
+# Render Blueprint: the Carbon Wallet engine (FastAPI) as a Docker web service.
+# Dashboard → New → Blueprint → this repo. Secrets marked `sync: false` are typed in the dashboard, never committed.
+services:
+  - type: web
+    name: carbon-wallet-engine
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free            # sleeps after 15 min without traffic (first request then takes ~1 min). Use "starter" for judging days.
+    region: singapore     # nearest Render region to India
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: ENGINE_REQUIRE_SIGNATURE   # only HMAC-signed calls from the website's server (app/signing.py)
+        value: "1"
+      - key: ENGINE_API_KEY             # same value as on Netlify
+        sync: false
+      - key: ENGINE_SALT_KEY
+        sync: false
+      - key: BILL_HASH_SALT
+        sync: false
+      - key: DATABASE_URL               # Supabase pooled URL with the driver: postgresql+psycopg://…?options=-csearch_path%3Dengine
+        sync: false
+      - key: CORS_ORIGINS               # your Netlify URL, e.g. https://carbon-wallet.netlify.app
+        sync: false
+      - key: NVIDIA_API_KEY             # AI fallback for hard-to-read bills (optional)
+        sync: false
+      - key: CHAIN_RPC_URL              # Polygon Amoy (optional; without it anchoring stays local)
+        sync: false
+      - key: CHAIN_ID
+        value: "80002"
+      - key: CHAIN_NAME
+        value: polygon-amoy
+      - key: CHAIN_EXPLORER
+        value: https://amoy.polygonscan.com
+      - key: ANCHOR_PRIVATE_KEY
+        sync: false
+      - key: ANCHOR_CONTRACT_ADDRESS
+        sync: false

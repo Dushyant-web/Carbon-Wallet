@@ -1,5 +1,7 @@
 "use client";
 
+import { GRID_KG_CO2E_PER_KWH } from "@/lib/ghg";
+import { Pager, usePaged } from "@/components/ui/Pager";
 import React from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +21,7 @@ type AdminUser = {
 };
 
 type Overview = {
-  stats: { users: number; usersWithLogin: number; admins: number; households: number; activities: number };
+  stats: { users: number; usersWithLogin: number; admins: number; merchants: number; merchantsPending: number; households: number; activities: number };
   users: AdminUser[];
   audit: { id: string; at: string; action: string; details: string | null; user: string; household: string }[];
   deletions: {
@@ -39,6 +41,9 @@ export default function AdminOverviewPage() {
     },
   });
 
+  const users = usePaged(data?.users ?? []);
+  const audit = usePaged(data?.audit ?? []);
+
   async function toggle(u: AdminUser) {
     const res = await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH",
@@ -48,7 +53,8 @@ export default function AdminOverviewPage() {
     if (res.ok) queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
   }
 
-  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  // "no data and no error yet" is loading too: that is what the server renders, so the first paint matches
+  if (isLoading || (!data && !error)) return <Skeleton className="h-96 w-full" />;
   if (error || !data) return <p className="text-sm text-critical-text">Couldn&apos;t load the admin overview.</p>;
 
   return (
@@ -62,12 +68,21 @@ export default function AdminOverviewPage() {
         </p>
       </header>
 
-      <section className="grid grid-cols-2 xl:grid-cols-5 gap-8">
+      <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-8">
         <KpiCard label="Users" value={data.stats.users} metaText={`${data.stats.usersWithLogin} can log in`} />
         <KpiCard label="Admins" value={data.stats.admins} />
+        <KpiCard
+          label="Shops"
+          value={data.stats.merchants}
+          metaText={
+            <Link href="/admin/merchants" className="underline">
+              {data.stats.merchantsPending ? `${data.stats.merchantsPending} waiting for approval` : "Review shops"}
+            </Link>
+          }
+        />
         <KpiCard label="Households" value={data.stats.households} metaText={<Link href="/admin/households" className="underline">Open directory</Link>} />
         <KpiCard label="Logged activities" value={data.stats.activities} />
-        <KpiCard label="Grid factor" value="0.675" unit="kg/kWh" metaText="CEA v22.0" />
+        <KpiCard label="Grid factor" value={String(GRID_KG_CO2E_PER_KWH)} unit="kg CO₂e/kWh" metaText="CEA v22.0 + CH₄, N₂O" />
       </section>
 
       <section>
@@ -82,7 +97,7 @@ export default function AdminOverviewPage() {
               </tr>
             </thead>
             <tbody>
-              {data.users.map((u) => (
+              {users.slice.map((u) => (
                 <tr key={u.id} className="border-b border-border/70">
                   <td className="py-2.5 pr-4">{u.name}</td>
                   <td className="py-2.5 pr-4 font-mono text-xs">{u.email}</td>
@@ -108,6 +123,7 @@ export default function AdminOverviewPage() {
             </tbody>
           </table>
         </div>
+        <Pager page={users.page} pages={users.pages} total={users.total} onPage={users.setPage} />
       </section>
 
       <section>
@@ -138,7 +154,7 @@ export default function AdminOverviewPage() {
         <SectionHeading index="03" title="Recent activity" meta="Audit log" />
         <ul className="mt-4 flex flex-col">
           {data.audit.length === 0 && <li className="text-sm text-ink-muted">Nothing yet.</li>}
-          {data.audit.map((a) => (
+          {audit.slice.map((a) => (
             <li key={a.id} className="grid grid-cols-[150px_1fr] gap-4 border-b border-border/70 py-2 text-sm">
               <span className="font-mono text-xs text-ink-muted">{new Date(a.at).toLocaleString("en-IN")}</span>
               <span>
@@ -147,6 +163,7 @@ export default function AdminOverviewPage() {
             </li>
           ))}
         </ul>
+        <Pager page={audit.page} pages={audit.pages} total={audit.total} onPage={audit.setPage} />
       </section>
     </div>
   );

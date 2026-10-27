@@ -13,7 +13,7 @@ const LookupSchema = z.object({ input: z.string().trim().min(4).max(300) });
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAdmin(req);
-    const limit = rateLimit(`card-lookup:${user.id}`, 30);
+    const limit = await rateLimit(`card-lookup:${user.id}`, 30);
     if (!limit.ok) return NextResponse.json({ error: `Slow down: try again in ${limit.retryAfterSec}s.` }, { status: 429 });
 
     const parsed = LookupSchema.safeParse(await req.json().catch(() => null));

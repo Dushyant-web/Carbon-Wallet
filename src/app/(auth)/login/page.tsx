@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { getCurrentUser } from "@/server/auth/session";
+import { googleConfigured } from "@/server/auth/google";
 
 export const metadata = { title: "Log in" };
 
@@ -11,5 +12,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
     const next = (await searchParams).next;
     redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
   }
-  return <AuthForm mode="login" />;
+  return <AuthForm mode="login" google={googleConfigured()} />;
 }

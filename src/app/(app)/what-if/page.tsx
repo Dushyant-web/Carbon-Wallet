@@ -134,7 +134,7 @@ export default function WhatIfPage() {
           <span className="label-caps text-canvas-card/60">Your month would be</span>
           <p className="mt-2 font-heading text-6xl font-medium leading-none tabular-nums">
             {Math.round(after)}
-            <span className="ml-2 text-lg text-canvas-card/70">kg CO₂</span>
+            <span className="ml-2 text-lg text-canvas-card/70">kg CO₂e</span>
           </p>
           <p className="mt-2 font-mono text-xs text-canvas-card/70">
             from {Math.round(base)} kg · {saved > 0 ? `−${saved.toFixed(1)} kg (${pct}%)` : "no change yet"}

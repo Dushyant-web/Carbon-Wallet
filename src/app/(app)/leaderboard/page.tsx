@@ -180,7 +180,7 @@ export default function LeaderboardPage() {
               </tbody>
             </table>
             <p className="mt-3 text-[12px] text-ink-muted">
-              {rows.length} homes with recorded data for {data.period?.label ?? "this month"}. Totals are kg CO₂ for the month.
+              {rows.length} homes with recorded data for {data.period?.label ?? "this month"}. Totals are kg CO₂e for the month.
             </p>
           </section>
         </>

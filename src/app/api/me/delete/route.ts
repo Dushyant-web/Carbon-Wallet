@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser(req);
-    if (!rateLimit(`delete:${user.id}`, 5).ok) return NextResponse.json({ error: "Too many attempts. Try again in a minute." }, { status: 429 });
+    if (!(await rateLimit(`delete:${user.id}`, 5)).ok) return NextResponse.json({ error: "Too many attempts. Try again in a minute." }, { status: 429 });
     const body = z.object({ password: z.string().min(1), deleteHouseholds: z.array(z.string()).max(50).default([]) }).safeParse(await req.json().catch(() => null));
     if (!body.success) return NextResponse.json({ error: "Enter your password to confirm." }, { status: 400 });
     const out = await requestAccountDeletion(user.id, body.data.password, body.data.deleteHouseholds);

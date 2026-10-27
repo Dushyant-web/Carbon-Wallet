@@ -1,3 +1,4 @@
+import { GRID_KG_CO2E_PER_KWH as GRID } from "@/lib/ghg";
 import { describe, it, expect } from "vitest";
 import { GET as getHouseholds } from "@/app/api/households/route";
 import { GET as getBenchmark } from "@/app/api/benchmark/route";
@@ -39,7 +40,7 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
       const data = await res.json();
       expect(data.households.length).toBe(1);
       expect(data.households[0].name).toContain("Sharma");
-      expect(data.households[0].currentEmissions).toBe(286);
+      expect(data.households[0].currentEmissions).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
     });
 
     it("should filter households by state", async () => {
@@ -63,7 +64,7 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
 
       const data = await res.json();
       expect(data.householdId).toBe("hh_01_sharma");
-      expect(data.householdEmissions).toBe(286);
+      expect(data.householdEmissions).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
       // Other homes are anonymous in the API: Patel (132 kg) leads, but only by number
     expect(data.leader.name).toBe("Cleanest home");
     expect(JSON.stringify(data.cohortList)).not.toContain("Patel");
@@ -114,7 +115,7 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
       expect(ac.status).toBe("AVAILABLE");
       expect(ac.daysDone).toBe(0);
       // 1.5 kW (largest AC, rated) × 1 h × 0.675 kg/kWh
-      expect(ac.kgPerDay).toBeCloseTo(1.5 * 0.675, 2);
+      expect(ac.kgPerDay).toBeCloseTo(1.5 * GRID, 2);
       expect(data.player.xp).toBe(0);
       expect(data.player.levelName).toBe("Seedling");
     });
@@ -128,7 +129,7 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
       expect(ac.daysDone).toBe(1);
       expect(ac.streak).toBe(1);
       expect(ac.checkedInToday).toBe(true);
-      expect(ac.kgSaved).toBeCloseTo(1.5 * 0.675, 1);
+      expect(ac.kgSaved).toBeCloseTo(1.5 * GRID, 1);
       expect(data.player.xp).toBe(10);
       expect(data.player.badges.find((b: { id: string }) => b.id === "first_step").earned).toBe(true);
 
@@ -157,7 +158,7 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
       expect(report.monthLabel).toContain("March 2026");
 
       // Verify calibrated targets
-      expect(report.summary.grossEmissionsKg).toBe(286);
+      expect(report.summary.grossEmissionsKg).toBeCloseTo(286, 1); // the calibrated March total, to the rounding of its events
       expect(report.summary.priorMonthKg).toBe(312.2);
       expect(report.summary.momTrendPct).toBe("-8.4%");
       expect(report.summary.perCapitaKg).toBe(Number((286 / 4).toFixed(1))); // Sharma family size 4
@@ -166,7 +167,7 @@ describe("Phase 8: Compare, Households Directory, Challenges & Reports", () => {
       expect(report.scopes.scope1).toBeDefined();
       expect(report.scopes.scope2).toBeDefined();
       expect(report.scopes.scope3).toBeDefined();
-      expect(report.scopes.scope2.gridFactorUsed).toBe(0.675); // CEA v22 all-India factor
+      expect(report.scopes.scope2.gridFactorUsed).toBe(GRID); // CEA v22 all-India factor
 
       // Verify category apportionment
       expect(report.categories.length).toBeGreaterThanOrEqual(4);

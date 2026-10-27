@@ -10,7 +10,7 @@ const STEPS = [
   ["Set up your household", "City, people, home type. Takes 30 seconds."],
   ["Add your AC and vehicles", "From the Assets page. The star label is enough."],
   ["Enter two electricity bills", "One winter, one summer. We measure what your AC really draws."],
-  ["Read your statement", "kg CO₂ and ₹ by source, heat vs habit, and your biggest lever."],
+  ["Read your statement", "kg CO₂e and ₹ by source, heat vs habit, and your biggest lever."],
   ["Commit and verify", "Commit to one action, then issue a statement anyone can verify."],
 ];
 
