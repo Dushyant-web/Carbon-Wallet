@@ -1,12 +1,13 @@
 name: Scheduled jobs
 
-# Netlify's functions don't run cron by themselves; these calls do. Set repository secrets SITE_URL and CRON_SECRET
-# (the same CRON_SECRET as in Netlify's environment).
+# The website's functions don't run cron by themselves; these calls do. Set repository secrets SITE_URL and CRON_SECRET
+# (the same CRON_SECRET as in the website's environment), and ENGINE_URL for the engine ping.
 on:
   schedule:
     - cron: "30 20 * * *"   # 02:00 IST: mohallas and area totals, seal yesterday on chain, retrain the forecast, purge
     - cron: "15 * * * *"    # hourly: reminders
     - cron: "0 6 */3 * *"   # every 3 days: keep the free Supabase project awake
+    - cron: "*/10 * * * *"  # every 10 min: keep the Render engine awake (free instances sleep after 15 idle minutes)
   workflow_dispatch:
 
 jobs:
@@ -17,11 +18,13 @@ jobs:
         env:
           SITE_URL: ${{ secrets.SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ENGINE_URL: ${{ secrets.ENGINE_URL }}
           SCHEDULE: ${{ github.event.schedule }}
         run: |
           call() { curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$SITE_URL/api/jobs/$1"; echo; }
           case "$SCHEDULE" in
             "30 20 * * *") call areas; call seal; call ml; call purge ;;
             "15 * * * *") call reminders ;;
+            "*/10 * * * *") curl -fsS -m 90 "${ENGINE_URL:-https://carbon-wallet-engine.onrender.com}/api/v1/health"; echo ;;
             *) call keepalive ;;
           esac
