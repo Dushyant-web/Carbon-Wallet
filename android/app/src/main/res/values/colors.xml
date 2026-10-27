@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same tokens as the website's tailwind.config.ts -->
+    <color name="canvas">#F4F1EA</color>
+    <color name="ink">#1D1C18</color>
+    <color name="gov_navy">#12284C</color>
+    <color name="gov_deep">#0B1B36</color>
+    <color name="paper">#FBFAF7</color>
+    <color name="leaf">#9FD49A</color>
+</resources>
