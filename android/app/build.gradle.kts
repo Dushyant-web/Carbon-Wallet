@@ -33,6 +33,8 @@ android {
         versionName = "1.0.0"
         // Google sign-in (Ghar and Dukaan): the *web* OAuth client ID the server checks tokens against. Empty hides the button.
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", quoted(setting("cw.googleWebClientId") ?: ""))
+        // Demo/judging builds: one-tap demo logins on the sign-in screen (like the website's NEXT_PUBLIC_SHOW_DEMO)
+        buildConfigField("boolean", "SHOW_DEMO", (setting("cw.showDemo") == "true").toString())
     }
 
     flavorDimensions += "role"

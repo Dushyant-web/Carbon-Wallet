@@ -13,9 +13,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,20 +58,45 @@ object Store {
         file(path).takeIf { it.exists() }?.readText()
     }?.also { memory[path] = it }
 
+    /**
+     * One request per path at a time: a screen and the background prefetch asking for the same data share a
+     * single call, which matters when each call takes seconds on a slow server.
+     */
     suspend fun fetch(path: String): String {
+        val call = inFlight.computeIfAbsent(path) { background.async(start = CoroutineStart.LAZY) { load(path) } }
+        try {
+            return call.await()
+        } finally {
+            inFlight.remove(path, call)
+        }
+    }
+
+    private val inFlight = ConcurrentHashMap<String, Deferred<String>>()
+    // outlives the screen that asked, so a call already under way still fills the cache if the person moves on
+    private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // bumped on sign-out: an answer that arrives afterwards must not land in the next person's cache
+    @Volatile
+    private var generation = 0
+
+    private suspend fun load(path: String): String {
+        val started = generation
         val text = Http.getText(path)
-        memory[path] = text
-        withContext(Dispatchers.IO) {
-            dir.mkdirs()
-            file(path).writeText(text)
+        if (started == generation) {
+            memory[path] = text
+            withContext(Dispatchers.IO) {
+                dir.mkdirs()
+                file(path).writeText(text)
+            }
         }
         return text
     }
 
-    /** Warms the cache for the screens a person is likely to open next, all at once. */
+    /** Warms the cache for the screens a person is likely to open next, a few at a time so the open screen goes first. */
     fun prefetch(scope: CoroutineScope, paths: List<String>) {
+        val slots = Semaphore(3)
         scope.launch {
-            paths.map { p -> async { runCatching { fetch(p) } } }.awaitAll()
+            paths.map { p -> async { slots.withPermit { runCatching { fetch(p) } } } }.awaitAll()
         }
     }
 
@@ -75,6 +105,8 @@ object Store {
     }
 
     fun clear() {
+        generation++
+        inFlight.clear()
         memory.clear()
         if (::dir.isInitialized) dir.deleteRecursively()
     }

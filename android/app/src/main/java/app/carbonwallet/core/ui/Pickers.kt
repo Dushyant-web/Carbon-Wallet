@@ -18,6 +18,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -62,7 +63,7 @@ fun DateField(label: String, value: String, onChange: (String) -> Unit, modifier
     }
     if (open) {
         val initial = runCatching { LocalDate.parse(value).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli() }.getOrNull()
-        val state = rememberDatePickerState(initialSelectedDateMillis = initial)
+        val state = rememberDatePickerState(initialSelectedDateMillis = initial, selectableDates = NotAfterToday)
         DatePickerDialog(
             onDismissRequest = { open = false },
             confirmButton = {
@@ -85,6 +86,15 @@ fun DateField(label: String, value: String, onChange: (String) -> Unit, modifier
             )
         }
     }
+}
+
+/** Bills and purchases are never in the future (the server refuses them too). */
+@OptIn(ExperimentalMaterial3Api::class)
+private object NotAfterToday : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long) =
+        utcTimeMillis <= LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+
+    override fun isSelectableYear(year: Int) = year <= LocalDate.now().year
 }
 
 /** Big tappable chips for one choice out of a few (reasons, statuses). */

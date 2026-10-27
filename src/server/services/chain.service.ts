@@ -55,7 +55,13 @@ export async function sealDay(day: string) {
 
   const url = `${BASE()}/api/v1/events/anchor`;
   const body = JSON.stringify({ day, leaves: leaves.map((l) => l.hash) });
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...engineHeaders("POST", url, body) }, body, cache: "no-store" });
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...engineHeaders("POST", url, body) },
+    body,
+    cache: "no-store",
+    signal: AbortSignal.timeout(25_000), // the nightly job retries tomorrow rather than hitting the 30 s function limit
+  });
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(typeof out.detail === "string" ? out.detail : `anchoring failed (${res.status})`);
 

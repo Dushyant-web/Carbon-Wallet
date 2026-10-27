@@ -49,7 +49,37 @@ export async function GET(
     const priorMonthKey = shiftMonth(targetMonth, -1);
     const priorSummary = household.monthlySummaries.find((s) => s.month === priorMonthKey) ?? null;
 
-    const coverage = await monthCoverage(householdId);
+    // Everything else needs only the household and the month, so it is read in one go: on hosting where the
+    // database is far away each sequential query costs a round trip
+    const [coverage, benchmark, events, billCount, committedCount, challengeCount, shops, average] = await Promise.all([
+      monthCoverage(householdId),
+      // peers: every home with recorded data for the same month
+      currentSummary
+        ? benchmarkService.getCohortBenchmark(householdId, targetMonth).catch((err) => {
+            if (err instanceof BenchmarkUnavailable) return null;
+            throw err;
+          })
+        : null,
+      // where this month's number comes from
+      db.emissionEvent.findMany({
+        where: {
+          householdId,
+          occurredOn: {
+            gte: new Date(`${targetMonth}-01T00:00:00.000Z`),
+            lt: new Date(`${shiftMonth(targetMonth, 1)}-01T00:00:00.000Z`),
+          },
+          activity: COUNTED_ACTIVITY,
+        },
+        select: { kgCo2e: true, factor: { select: { source: true } }, activity: { select: { source: true, billId: true } } },
+      }),
+      // first-run checklist, ticked from real data
+      db.bill.count({ where: { householdId } }),
+      db.recommendation.count({ where: { householdId, status: { in: ["ACCEPTED", "COMPLETED"] } } }),
+      db.challenge.count({ where: { householdId } }),
+      registeredBy(householdId), // items a shop registered at the counter
+      // the yardstick for the colour: measured state average for this month once there are enough homes
+      stateAverage(household.state, targetMonth),
+    ]);
     const currentEmissions = currentSummary?.totalKg ?? 0;
     const priorPartial = coverage.get(priorMonthKey)?.partial ?? false;
     // Only compare two months that are both complete; a partly billed month would make any % meaningless
@@ -124,36 +154,16 @@ export async function GET(
     // Next best action: the top pending recommendation, or nothing
     const nba = household.recommendations[0] ?? null;
 
-    // Peers: every home with recorded data for the same month
-    let peer: { percentile: number; cohortCount: number; medianKg: number; differenceFromMedianPct: number } | null = null;
-    if (currentSummary) {
-      try {
-        const b = await benchmarkService.getCohortBenchmark(householdId, targetMonth);
-        if (b.cohortCount >= 3) {
-          peer = {
-            percentile: b.percentile,
-            cohortCount: b.cohortCount,
-            medianKg: b.cohortMedianTotal,
-            differenceFromMedianPct: b.differenceFromMedianPct,
-          };
-        }
-      } catch (err) {
-        if (!(err instanceof BenchmarkUnavailable)) throw err;
-      }
-    }
+    const peer =
+      benchmark && benchmark.cohortCount >= 3
+        ? {
+            percentile: benchmark.percentile,
+            cohortCount: benchmark.cohortCount,
+            medianKg: benchmark.cohortMedianTotal,
+            differenceFromMedianPct: benchmark.differenceFromMedianPct,
+          }
+        : null;
 
-    // Where this month's number comes from
-    const events = await db.emissionEvent.findMany({
-      where: {
-        householdId,
-        occurredOn: {
-          gte: new Date(`${targetMonth}-01T00:00:00.000Z`),
-          lt: new Date(`${shiftMonth(targetMonth, 1)}-01T00:00:00.000Z`),
-        },
-        activity: COUNTED_ACTIVITY,
-      },
-      select: { kgCo2e: true, factor: { select: { source: true } }, activity: { select: { source: true, billId: true } } },
-    });
     const billEvents = events.filter((e) => e.activity.billId);
     const billKg = billEvents.reduce((a, e) => a + e.kgCo2e, 0);
     const provenance = {
@@ -169,22 +179,12 @@ export async function GET(
     const solarAppliance = household.appliances.find((a) => a.type === "SolarPV");
     const solarKwh = solarAppliance ? Math.round(solarAppliance.powerKw * solarAppliance.avgHoursPerDay * 30) : 0;
 
-    // First-run checklist, ticked from real data
-    const [billCount, committedCount, challengeCount] = await Promise.all([
-      db.bill.count({ where: { householdId } }),
-      db.recommendation.count({ where: { householdId, status: { in: ["ACCEPTED", "COMPLETED"] } } }),
-      db.challenge.count({ where: { householdId } }),
-    ]);
-    const shops = await registeredBy(householdId); // items a shop registered at the counter
     const setup = {
       bills: billCount,
       assets: household.appliances.length + household.vehicles.length,
       committed: committedCount,
       challenges: challengeCount,
     };
-
-    // the yardstick for the colour: measured state average for this month once there are enough homes
-    const average = await stateAverage(household.state, targetMonth);
 
     return NextResponse.json({
       allowance: { ...average, allowanceKg: Math.round(average.perPersonKg * Math.max(1, household.size)) },

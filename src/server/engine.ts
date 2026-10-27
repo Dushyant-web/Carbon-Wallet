@@ -4,6 +4,8 @@ import type { AnchorResult, CalibrationResult, DecompositionResult, StatementBun
 
 // Server-side client for the FastAPI engine. Bill extraction is server-to-server only (engine key).
 const BASE = process.env.PY_API_URL ?? "http://127.0.0.1:8001";
+// Under the 30 s serverless limit: a sleeping engine (free hosting) then gives a clear error, not a 502
+const TIMEOUT_MS = 25_000;
 
 export class EngineError extends Error {
   status: number;
@@ -23,9 +25,10 @@ export async function engineExtractBill(bytes: Buffer, allowAi: boolean): Promis
       headers: { "content-type": "application/octet-stream", ...engineHeaders("POST", url, bytes) },
       body: new Uint8Array(bytes),
       cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch {
-    throw new EngineError("The bill reader is offline. Start the engine (backend) and try again.", 503);
+    throw new EngineError("The bill reader is offline or waking up. Try again in a minute.", 503);
   }
   const body = await res.json().catch(() => ({}));
   if (res.status === 415 || res.status === 413 || res.status === 400) {
@@ -40,7 +43,7 @@ export async function engineExtractBill(bytes: Buffer, allowAi: boolean): Promis
 
 export type CalibrationInput = { period_start: string; period_end: string; kwh: number; ac_hours: number };
 
-async function postJson<T>(path: string, body: unknown, withKey = false): Promise<T> {
+async function postJson<T>(path: string, body: unknown, withKey = false, timeoutMs = TIMEOUT_MS): Promise<T> {
   let res: Response;
   try {
     const url = `${BASE}/api/v1${path}`;
@@ -50,9 +53,10 @@ async function postJson<T>(path: string, body: unknown, withKey = false): Promis
       headers: { "content-type": "application/json", ...(withKey ? engineHeaders("POST", url, json) : {}) },
       body: json,
       cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
-    throw new EngineError("The engine is offline.", 503);
+    throw new EngineError("The engine is offline or waking up.", 503);
   }
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new EngineError(typeof out.detail === "string" ? out.detail : `Engine error on ${path}`, res.status);
@@ -102,9 +106,9 @@ async function getJson<T>(path: string): Promise<T> {
   let res: Response;
   try {
     const url = `${BASE}/api/v1${path}`;
-    res = await fetch(url, { headers: engineHeaders("GET", url), cache: "no-store" });
+    res = await fetch(url, { headers: engineHeaders("GET", url), cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch {
-    throw new EngineError("The engine is offline.", 503);
+    throw new EngineError("The engine is offline or waking up.", 503);
   }
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new EngineError(typeof out.detail === "string" ? out.detail : `Engine error on ${path}`, res.status);
@@ -158,7 +162,8 @@ export type Narrative = { bullets: string[]; model: string | null; reason: strin
 
 /** Plain-English bullets written by an LLM from our numbers; bullets with invented numbers are dropped. */
 export function engineNarrate(facts: Record<string, unknown>, bullets = 4) {
-  return postJson<Narrative>("/insights/narrate", { facts, bullets }, true);
+  // short: the insights it rewords already took most of the request's time
+  return postJson<Narrative>("/insights/narrate", { facts, bullets }, true, 10_000);
 }
 
 export type FuelReading = {
@@ -184,9 +189,10 @@ export async function engineExtractFuel(bytes: Buffer, allowAi: boolean): Promis
       headers: { "content-type": "application/octet-stream", ...engineHeaders("POST", url, bytes) },
       body: new Uint8Array(bytes),
       cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch {
-    throw new EngineError("The photo reader is offline. Start the engine (backend) and try again.", 503);
+    throw new EngineError("The photo reader is offline or waking up. Try again in a minute.", 503);
   }
   const body = await res.json().catch(() => ({}));
   if ([400, 413, 415].includes(res.status)) throw new EngineError(body.detail ?? "That photo couldn't be read.", res.status);
@@ -225,7 +231,8 @@ export type MlForecast = {
 };
 
 export function engineMlTrain(homes: MlHome[]) {
-  return postJson<MlModelInfo>("/ml/forecast/train", { homes }, true);
+  // run from scripts and jobs, not page requests: training takes ~20 s
+  return postJson<MlModelInfo>("/ml/forecast/train", { homes }, true, 120_000);
 }
 /** Starts training on the engine and returns at once (for serverless callers that can't wait ~20 s). */
 export function engineMlTrainInBackground(homes: MlHome[]) {

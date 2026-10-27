@@ -221,19 +221,32 @@ export async function mohallaView(householdId: string) {
   if (!h.location) return { location: null, minHomes: min };
 
   const st = stateCode(h.state);
-  // the same month the home screen reports, so the numbers agree
-  const month = (await resolveReportingPeriod(householdId, null)).month;
-  const mine = await db.monthlySummary.findUnique({ where: { householdId_month: { householdId, month } } });
-  const prev = month ? prevMonth(month) : null;
+  const loc = h.location;
   const keys = [
-    ["MOHALLA", h.location.mohallaId ?? "-"],
+    ["MOHALLA", loc.mohallaId ?? "-"],
     ["CITY", `${h.city}|${st}`],
     ["STATE", st],
     ["INDIA", "IN"],
   ] as const;
-  const stats = month
-    ? await db.areaStat.findMany({ where: { OR: keys.map(([level, key]) => ({ level, key, month: { in: [month, prev!] } })) } })
-    : [];
+  const homesHere = loc.mohalla?.homes ?? 1;
+  const shareable = !!loc.mohallaId && homesHere >= min;
+
+  // Read everything at once (one Promise.all, so a failure anywhere is still handled): on hosting where the
+  // database is far away each sequential query costs a round trip
+  // the same month the home screen reports, so the numbers agree
+  const monthP = resolveReportingPeriod(householdId, null).then((p) => p.month);
+  const [month, mine, stats, facts, weather, demoHomes, map] = await Promise.all([
+    monthP,
+    monthP.then((m) => db.monthlySummary.findUnique({ where: { householdId_month: { householdId, month: m } } })),
+    monthP.then((m) =>
+      m ? db.areaStat.findMany({ where: { OR: keys.map(([level, key]) => ({ level, key, month: { in: [m, prevMonth(m)] } })) } }) : [],
+    ),
+    monthP.then((m) => (shareable ? mohallaFacts(loc.mohallaId!, m) : null)),
+    weatherFor(loc.h3Area),
+    loc.mohallaId ? db.householdLocation.count({ where: { mohallaId: loc.mohallaId, household: { demo: true } } }) : 0,
+    mohallaMap(loc.h3Cell, loc.h3Area, shareable ? loc.mohallaId : null),
+  ]);
+  const prev = month ? prevMonth(month) : null;
   const pick = (level: string, key: string, m: string | null) => stats.find((s) => s.level === level && s.key === key && s.month === m) ?? null;
   const si = stateInfo(h.state);
   const names: Record<string, [string, string]> = {
@@ -268,11 +281,7 @@ export async function mohallaView(householdId: string) {
     }),
   ];
 
-  const weather = await weatherFor(h.location.h3Area);
   const acKw = h.appliances.reduce((a, x) => a + x.powerKw, 0);
-  const homesHere = h.location.mohalla?.homes ?? 1;
-  const shareable = !!h.location.mohallaId && homesHere >= min;
-  const facts = shareable ? await mohallaFacts(h.location.mohallaId!, month) : null;
   const place = h.location.mohalla?.name.split(" · ").slice(1).join(" · ") || h.location.locality || h.city;
   const feed = buildFeed({ weather, levels, acKw, month, facts, place });
 
@@ -292,8 +301,8 @@ export async function mohallaView(householdId: string) {
     heat: weather?.days[1] ? heatForecast(weather.days[1].maxC, acKw) : null,
     feed,
     facts,
-    demoHomes: h.location.mohallaId ? await db.householdLocation.count({ where: { mohallaId: h.location.mohallaId, household: { demo: true } } }) : 0,
-    map: await mohallaMap(h.location.h3Cell, h.location.h3Area, shareable ? h.location.mohallaId : null),
+    demoHomes,
+    map,
     official: officialFor(h.city, st).map((o) => ({ ...o, monthlyKg: monthlyKg(o.perCapitaT) })),
     place,
   };

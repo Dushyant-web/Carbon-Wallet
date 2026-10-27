@@ -162,9 +162,9 @@ fun LoginScreen(flavor: FlavorSpec) {
                 )
             }
 
-            if (BuildConfig.DEBUG && flavor.demoAccounts.isNotEmpty()) {
+            if ((BuildConfig.DEBUG || BuildConfig.SHOW_DEMO) && flavor.demoAccounts.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
-                Eyebrow(t("Demo accounts (debug build)", "डेमो खाते (डीबग बिल्ड)"))
+                Eyebrow(t("Demo accounts", "डेमो खाते"))
                 flavor.demoAccounts.forEach { demo ->
                     Row(
                         Modifier

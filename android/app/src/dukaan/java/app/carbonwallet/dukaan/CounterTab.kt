@@ -122,6 +122,7 @@ private fun ScanScreen() {
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
     var torch by rememberSaveable { mutableStateOf(false) }
+    var cameraBroken by remember { mutableStateOf(false) }
     var code by rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -159,8 +160,18 @@ private fun ScanScreen() {
         }
 
         Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(6.dp)).background(Cw.govDeep), contentAlignment = Alignment.Center) {
-            if (granted) {
-                BarcodeScanner(onCode = { check(it) }, torch = torch, modifier = Modifier.fillMaxSize())
+            if (granted && cameraBroken) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
+                    Icon(Lucide.Camera, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        t("The camera scanner couldn't start on this phone. Type the code below instead.", "इस फ़ोन पर कैमरा स्कैनर शुरू नहीं हुआ। नीचे कोड लिखें।"),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            } else if (granted) {
+                BarcodeScanner(onCode = { check(it) }, torch = torch, modifier = Modifier.fillMaxSize(), onUnavailable = { cameraBroken = true })
                 ScanFrame()
                 Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.45f)).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(t("Hold the barcode inside the frame", "बारकोड को फ़्रेम के अंदर रखें"), color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))

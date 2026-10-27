@@ -49,10 +49,11 @@ import java.util.concurrent.Executors
  * no network, no photo saved. [onCode] gets each value read; the caller ignores repeats.
  */
 @Composable
-fun BarcodeScanner(onCode: (String) -> Unit, torch: Boolean, modifier: Modifier = Modifier) {
+fun BarcodeScanner(onCode: (String) -> Unit, torch: Boolean, modifier: Modifier = Modifier, onUnavailable: () -> Unit = {}) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val latest by rememberUpdatedState(onCode)
+    val unavailable by rememberUpdatedState(onUnavailable)
     var camera by remember { mutableStateOf<Camera?>(null) }
     val previewView = remember {
         PreviewView(context).apply {
@@ -62,14 +63,23 @@ fun BarcodeScanner(onCode: (String) -> Unit, torch: Boolean, modifier: Modifier 
     }
 
     DisposableEffect(owner) {
+        // a phone whose camera or barcode reader can't start falls back to typing the code, never a crash
+        val scanner = runCatching {
+            BarcodeScanning.getClient(
+                BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_CODE_128, Barcode.FORMAT_QR_CODE).build(),
+            )
+        }.getOrElse {
+            unavailable()
+            return@DisposableEffect onDispose {}
+        }
         val executor = Executors.newSingleThreadExecutor()
-        val scanner = BarcodeScanning.getClient(
-            BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_CODE_128, Barcode.FORMAT_QR_CODE).build(),
-        )
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
         future.addListener({
-            val p = future.get()
+            val p = runCatching { future.get() }.getOrElse {
+                unavailable()
+                return@addListener
+            }
             provider = p
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
             val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
@@ -86,7 +96,7 @@ fun BarcodeScanner(onCode: (String) -> Unit, torch: Boolean, modifier: Modifier 
             runCatching {
                 p.unbindAll()
                 camera = p.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
-            }
+            }.onFailure { unavailable() }
         }, ContextCompat.getMainExecutor(context))
         onDispose {
             provider?.unbindAll()
