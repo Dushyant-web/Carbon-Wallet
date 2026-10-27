@@ -43,7 +43,7 @@ __pycache__/
 .pytest_cache/
 prisma/test.db
 prisma/test.db-journal
-storage/
+backend/storage/
 
 # real bills for extraction tuning: personal data, never commit
 private-bills/
